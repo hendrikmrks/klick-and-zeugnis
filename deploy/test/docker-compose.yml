@@ -71,12 +71,14 @@ services:
       - internal
       - proxy
     labels:
-      - traefik.enable=true
-      - traefik.docker.network=klick-proxy
-      - traefik.http.routers.klick-test.rule=Host(`test.klick-and-zeugnis.de`)
-      - traefik.http.routers.klick-test.entrypoints=websecure
-      - traefik.http.routers.klick-test.tls.certresolver=letsencrypt
-      - traefik.http.services.klick-test.loadbalancer.server.port=3000
+      traefik.enable: "true"
+      traefik.docker.network: klick-proxy
+      traefik.http.routers.klick-test.rule: "Host(`test.klick-and-zeugnis.de`)"
+      traefik.http.routers.klick-test.entrypoints: websecure
+      traefik.http.routers.klick-test.tls: "true"
+      traefik.http.routers.klick-test.tls.certresolver: letsencrypt
+      traefik.http.routers.klick-test.service: klick-test
+      traefik.http.services.klick-test.loadbalancer.server.port: "3000"
     healthcheck:
       test:
         [

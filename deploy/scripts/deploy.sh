@@ -43,9 +43,43 @@ fi
 docker compose --profile init run --rm db-init
 
 echo "==> Services starten"
-docker compose up -d --remove-orphans
+docker compose up -d --remove-orphans --force-recreate app
 
 docker image prune -f
+
+echo "==> Verifiziere Routing"
+APP_CONTAINER="$(docker compose ps -q app)"
+if [[ -z "${APP_CONTAINER}" ]]; then
+  echo "Fehler: App-Container läuft nicht."
+  docker compose ps
+  exit 1
+fi
+
+if ! docker network inspect klick-proxy -f '{{range .Containers}}{{.Name}} {{end}}' | grep -q "$(docker inspect -f '{{.Name}}' "${APP_CONTAINER}" | sed 's#^/##')"; then
+  echo "Fehler: App-Container ist nicht am Netzwerk klick-proxy."
+  docker network inspect klick-proxy
+  docker inspect "${APP_CONTAINER}" --format '{{json .NetworkSettings.Networks}}'
+  exit 1
+fi
+
+echo "Warte auf App-Healthcheck …"
+for _ in $(seq 1 24); do
+  HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${APP_CONTAINER}")"
+  if [[ "${HEALTH}" == "healthy" || "${HEALTH}" == "none" ]]; then
+    break
+  fi
+  sleep 5
+done
+
+if ! curl -sfk --resolve "test.klick-and-zeugnis.de:443:127.0.0.1" https://test.klick-and-zeugnis.de/ >/dev/null; then
+  if [[ "${ENVIRONMENT}" == "test" ]]; then
+    echo "Fehler: Traefik liefert keine Antwort für test.klick-and-zeugnis.de."
+    docker logs klick-traefik --tail 80 || true
+    docker logs "${APP_CONTAINER}" --tail 80 || true
+    docker inspect "${APP_CONTAINER}" --format '{{json .Config.Labels}}'
+    exit 1
+  fi
+fi
 
 echo "==> Deploy abgeschlossen: ${ENVIRONMENT} (${IMAGE_TAG})"
 docker compose ps
