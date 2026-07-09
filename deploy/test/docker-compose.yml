@@ -27,8 +27,10 @@ services:
       DATABASE_URL: mongodb://mongodb:27017/klick-and-zeugnis?replicaSet=rs0
       MONGODB_COLLECTION_PREFIX: test_
       PRISMA_CLIENT_ENGINE_TYPE: binary
-      RUN_DB_SEED: ${RUN_DB_SEED:-false}
-      FORCE_SEED_RESET: ${FORCE_SEED_RESET:-false}
+      RUN_DB_SEED: ${RUN_DB_SEED:-true}
+      FORCE_SEED_RESET: ${FORCE_SEED_RESET:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-mail@hendrik-beier.de}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-12092025}
     command:
       - /bin/sh
       - -c
@@ -38,7 +40,10 @@ services:
         npx prisma generate --schema=prisma/.schema.resolved.prisma
         npx prisma db push --schema=prisma/.schema.resolved.prisma --skip-generate
         if [ "$$RUN_DB_SEED" = "true" ]; then
-          FORCE_SEED_RESET="$$FORCE_SEED_RESET" node prisma/seed.runtime.cjs
+          FORCE_SEED_RESET="$$FORCE_SEED_RESET" \
+          SEED_ADMIN_EMAIL="$$SEED_ADMIN_EMAIL" \
+          SEED_ADMIN_PASSWORD="$$SEED_ADMIN_PASSWORD" \
+          node prisma/seed.runtime.cjs
         fi
     depends_on:
       mongodb:

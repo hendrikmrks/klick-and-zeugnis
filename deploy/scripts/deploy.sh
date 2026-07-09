@@ -31,6 +31,15 @@ echo "==> Pull Images (${IMAGE_TAG})"
 docker compose pull
 
 echo "==> Datenbank-Migrationen"
+if [[ "${ENVIRONMENT}" == "test" ]]; then
+  export RUN_DB_SEED=true
+  export FORCE_SEED_RESET=true
+  export SEED_ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-mail@hendrik-beier.de}"
+  export SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-12092025}"
+else
+  export RUN_DB_SEED=false
+  export FORCE_SEED_RESET=false
+fi
 docker compose --profile init run --rm db-init
 
 echo "==> Services starten"

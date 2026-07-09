@@ -43,6 +43,16 @@ async function main() {
     await prisma.user.deleteMany();
   }
 
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+
+  if (adminEmail && adminPassword) {
+    await seedUser(adminEmail, adminPassword, "Hendrik", "Beier", "Admin");
+    console.log("");
+    console.log(`Login admin: ${adminEmail}`);
+    return;
+  }
+
   await seedUser("test@example.com", "secret123", "Test", "User");
   await seedUser("admin@example.com", "admin123", "Admin", "User", "Admin");
 
