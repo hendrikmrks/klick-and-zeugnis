@@ -2,6 +2,16 @@ import type { SubscriptionLevel } from "@prisma/client";
 
 export const SUBSCRIPTION_LEVELS: SubscriptionLevel[] = ["Free", "Pro", "Premium", "Vip"];
 
+export function getEffectiveSubscriptionLevel(user: {
+  subscriptionLevel: SubscriptionLevel;
+  subscriptionExpiresAt: Date | null;
+}): SubscriptionLevel {
+  if (user.subscriptionExpiresAt && user.subscriptionExpiresAt < new Date()) {
+    return "Free";
+  }
+  return user.subscriptionLevel;
+}
+
 const PLAN_RANK: Record<SubscriptionLevel, number> = {
   Free: 0,
   Pro: 1,

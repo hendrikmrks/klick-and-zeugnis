@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/auth";
-import { hasClassOrganization } from "@/lib/subscription";
+import { hasClassOrganization, getEffectiveSubscriptionLevel } from "@/lib/subscription";
 import { NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -14,14 +14,14 @@ export async function PATCH(req: Request, { params }: Params) {
   const { id } = await params;
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, subscriptionLevel: true },
+    select: { id: true, subscriptionLevel: true, subscriptionExpiresAt: true },
   });
 
   if (!dbUser) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!hasClassOrganization(dbUser.subscriptionLevel)) {
+  if (!hasClassOrganization(getEffectiveSubscriptionLevel(dbUser))) {
     return NextResponse.json(
       { error: "Klassen-Organisation ist ab Premium verfügbar." },
       { status: 403 }

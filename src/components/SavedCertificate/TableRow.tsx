@@ -55,10 +55,12 @@ function ClassNameCell({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(cert.className ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const save = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setSaving(true);
+    setSaveError(null);
     const res = await fetch(`/api/certificate/${cert.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -68,19 +70,25 @@ function ClassNameCell({
     if (res.ok) {
       setEditing(false);
       onClassUpdated?.();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(typeof data.error === "string" ? data.error : "Speichern fehlgeschlagen.");
     }
   };
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="h-8 w-20 text-xs"
-          placeholder="5a"
-        />
-        <ActionButton label={saving ? "…" : "OK"} onClick={save} variant="ghost" />
+      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="h-8 w-20 text-xs"
+            placeholder="5a"
+          />
+          <ActionButton label={saving ? "…" : "OK"} onClick={save} variant="ghost" />
+        </div>
+        {saveError && <span className="text-xs text-red-600">{saveError}</span>}
       </div>
     );
   }

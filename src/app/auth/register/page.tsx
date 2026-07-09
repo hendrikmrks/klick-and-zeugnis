@@ -31,6 +31,10 @@ export default function RegisterPage() {
       setError("Die Passwörter stimmen nicht überein.");
       return;
     }
+    if (password.length < 8) {
+      setError("Das Passwort muss mindestens 8 Zeichen lang sein.");
+      return;
+    }
 
     setLoading(true);
     const res = await fetch("/api/auth/register", {
@@ -46,7 +50,18 @@ export default function RegisterPage() {
       return;
     }
 
-    await signIn("credentials", { email, password, callbackUrl: "/dashboard" });
+    const signInResult = await signIn("credentials", {
+      email,
+      password,
+      callbackUrl: "/dashboard",
+      redirect: false,
+    });
+    if (signInResult?.error) {
+      setError("Registrierung erfolgreich, aber die automatische Anmeldung ist fehlgeschlagen. Bitte melde dich manuell an.");
+    } else if (signInResult?.url) {
+      window.location.href = signInResult.url;
+    }
+    setLoading(false);
   };
 
   return (
@@ -103,6 +118,7 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
             required
           />
         </div>

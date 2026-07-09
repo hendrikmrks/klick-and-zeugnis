@@ -17,10 +17,10 @@ export type CertificateRecord = {
 export type UsageData = {
   monthGenerated: number;
   monthLimit: number;
-  monthSaved: number;
   totalGenerated: number;
   totalSaved: number;
   totalWords: number;
   avgWords: number;
   saveLimit: number;
+  subscriptionLevel?: string;
 };

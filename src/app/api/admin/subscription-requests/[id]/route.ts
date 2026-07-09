@@ -22,6 +22,13 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Anfrage nicht gefunden." }, { status: 404 });
   }
 
+  if ((action === "approve" || action === "reject") && request.status !== "Pending") {
+    return NextResponse.json(
+      { error: "Diese Anfrage wurde bereits bearbeitet." },
+      { status: 409 }
+    );
+  }
+
   if (action === "approve") {
     const updated = await prisma.$transaction(async (tx) => {
       const reqUpdated = await tx.subscriptionRequest.update({

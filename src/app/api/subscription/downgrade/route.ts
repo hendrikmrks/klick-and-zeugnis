@@ -14,11 +14,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ungültiger Tarif." }, { status: 400 });
   }
 
-  if (targetLevel === result.user.subscriptionLevel) {
+  const currentLevel = result.user.effectiveSubscriptionLevel;
+
+  if (targetLevel === currentLevel) {
     return NextResponse.json({ error: "Du hast diesen Tarif bereits." }, { status: 400 });
   }
 
-  if (!isDowngrade(result.user.subscriptionLevel, targetLevel)) {
+  if (!isDowngrade(currentLevel, targetLevel)) {
     return NextResponse.json(
       { error: "Nur Wechsel in einen niedrigeren Tarif sind sofort möglich." },
       { status: 400 }

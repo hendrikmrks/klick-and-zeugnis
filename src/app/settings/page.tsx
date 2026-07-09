@@ -5,7 +5,7 @@ import Image from "next/image";
 import PageContainer from "@/components/layout/PageContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
-import { useMe } from "@/lib/hooks/useMe";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ function formatDate(iso?: string) {
 }
 
 export default function SettingsPage() {
-  const { user, isLoading, isError, refetch } = useMe();
+  const { user, isLoading, isAuthenticated, refetch } = useRequireAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [profileSaved, setProfileSaved] = useState(false);
@@ -55,8 +55,7 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  if (isLoading) return <LoadingState />;
-  if (isError || !user) return <p className="p-8 text-center text-slate-600">Nicht eingeloggt</p>;
+  if (isLoading || !isAuthenticated || !user) return <LoadingState />;
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();

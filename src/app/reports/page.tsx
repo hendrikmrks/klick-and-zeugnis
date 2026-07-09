@@ -5,7 +5,7 @@ import PageContainer from "@/components/layout/PageContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
 import SavedCertificatesTable from "@/components/SavedCertificate/SavedCertificatesTable";
-import { useMe } from "@/lib/hooks/useMe";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { hasClassOrganization } from "@/lib/subscription";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ type UserReport = {
 };
 
 export default function ReportsPage() {
-  const { user, isLoading, isError } = useMe();
+  const { user, isLoading, isAuthenticated } = useRequireAuth();
   const [userReports, setUserReports] = useState<UserReport[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [classFilter, setClassFilter] = useState<string | null>(null);
@@ -34,20 +34,20 @@ export default function ReportsPage() {
   const classOrganizationEnabled = user ? hasClassOrganization(user.subscriptionLevel) : false;
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetch("/api/certificate/report")
       .then((r) => (r.ok ? r.json() : { reports: [] }))
       .then((d) => setUserReports(d.reports ?? []));
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!classOrganizationEnabled) return;
+    if (!isAuthenticated || !classOrganizationEnabled) return;
     fetch("/api/certificate/classes")
       .then((r) => (r.ok ? r.json() : { classes: [] }))
       .then((d) => setClasses(d.classes ?? []));
-  }, [classOrganizationEnabled, reloadSignal]);
+  }, [isAuthenticated, classOrganizationEnabled, reloadSignal]);
 
-  if (isLoading) return <LoadingState label="Zeugnisse werden geladen…" />;
-  if (isError || !user) return <p className="p-8 text-center text-slate-600">Nicht eingeloggt</p>;
+  if (isLoading || !isAuthenticated || !user) return <LoadingState label="Zeugnisse werden geladen…" />;
 
   const filterOptions: { value: string | null; label: string }[] = [
     { value: null, label: "Alle Klassen" },

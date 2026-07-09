@@ -94,11 +94,13 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [reports, setReports] = useState<CertReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [feedbackDraft, setFeedbackDraft] = useState<Record<string, string>>({});
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [statsRes, reqRes, usersRes, repRes] = await Promise.all([
         fetch("/api/admin/stats"),
@@ -106,10 +108,16 @@ export default function AdminPage() {
         fetch("/api/admin/users"),
         fetch("/api/admin/certificate-reports"),
       ]);
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (reqRes.ok) setRequests((await reqRes.json()).requests);
-      if (usersRes.ok) setUsers((await usersRes.json()).users);
-      if (repRes.ok) setReports((await repRes.json()).reports);
+      if (!statsRes.ok || !reqRes.ok || !usersRes.ok || !repRes.ok) {
+        throw new Error("Admin-Daten konnten nicht geladen werden.");
+      }
+      setStats(await statsRes.json());
+      setRequests((await reqRes.json()).requests);
+      setUsers((await usersRes.json()).users);
+      setReports((await repRes.json()).reports);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Laden fehlgeschlagen.";
+      setLoadError(message);
     } finally {
       setLoading(false);
     }
@@ -166,6 +174,12 @@ export default function AdminPage() {
         title="Admin-Bereich"
         description="Abonnements verwalten, Nutzer betreuen und gemeldete Zeugnistexte prüfen."
       />
+
+      {loadError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {loadError}
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map(({ id, label, icon: Icon }) => (

@@ -1,7 +1,12 @@
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveSubscriptionLevel } from "@/lib/subscription";
 import { NextResponse } from "next/server";
-import type { User } from "@prisma/client";
+import type { SubscriptionLevel, User } from "@prisma/client";
+
+export type AuthenticatedUser = User & {
+  effectiveSubscriptionLevel: SubscriptionLevel;
+};
 
 export async function requireUser() {
   const session = await getAuthSession();
@@ -14,10 +19,15 @@ export async function requireUser() {
   });
 
   if (!user) {
-    return { error: NextResponse.json({ error: "User not found" }, { status: 404 }) };
+    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
 
-  return { user };
+  return {
+    user: {
+      ...user,
+      effectiveSubscriptionLevel: getEffectiveSubscriptionLevel(user),
+    } satisfies AuthenticatedUser,
+  };
 }
 
 export async function requireAdmin() {
@@ -28,5 +38,5 @@ export async function requireAdmin() {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 
-  return { user: result.user as User };
+  return { user: result.user as AuthenticatedUser };
 }

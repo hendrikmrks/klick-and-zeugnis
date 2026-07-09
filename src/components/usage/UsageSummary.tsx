@@ -55,7 +55,7 @@ export default function UsageSummary({
           },
           {
             label: "Gespeichert",
-            value: `${usage.monthSaved} / ${formatLimit(usage.saveLimit)}`,
+            value: `${usage.totalSaved} / ${formatLimit(usage.saveLimit)}`,
           },
         ]}
       />

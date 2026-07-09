@@ -1,11 +1,8 @@
 services:
   mongodb:
     image: mongo:7
-    container_name: klick-and-zeugnis-mongodb
     restart: unless-stopped
     command: ["--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "${MONGODB_PORT:-27017}:27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -21,69 +18,60 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - internal
 
   db-init:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: db-init
-      args:
-        MONGODB_COLLECTION_PREFIX: ${MONGODB_COLLECTION_PREFIX:-local_}
-    container_name: klick-and-zeugnis-db-init
+    image: ${GHCR_IMAGE_DB_INIT}:${IMAGE_TAG}
     environment:
       DATABASE_URL: mongodb://mongodb:27017/klick-and-zeugnis?replicaSet=rs0
-      MONGODB_COLLECTION_PREFIX: ${MONGODB_COLLECTION_PREFIX:-local_}
+      MONGODB_COLLECTION_PREFIX: prod_
       PRISMA_CLIENT_ENGINE_TYPE: binary
-      RUN_DB_SEED: ${RUN_DB_SEED:-true}
+      RUN_DB_SEED: ${RUN_DB_SEED:-false}
       FORCE_SEED_RESET: ${FORCE_SEED_RESET:-false}
     command:
       - /bin/sh
       - -c
       - |
         set -e
-        echo "Synchronisiere Prisma-Schema …"
         node scripts/sync-prisma-collections.mjs
         npx prisma generate --schema=prisma/.schema.resolved.prisma
-        echo "Wende Datenbankschema an …"
         npx prisma db push --schema=prisma/.schema.resolved.prisma --skip-generate
         if [ "$$RUN_DB_SEED" = "true" ]; then
-          echo "Spiele Seed-Daten ein (FORCE_SEED_RESET=$$FORCE_SEED_RESET) …"
           FORCE_SEED_RESET="$$FORCE_SEED_RESET" node prisma/seed.runtime.cjs
-        else
-          echo "Seed übersprungen (RUN_DB_SEED=false)."
         fi
-        echo "Datenbank-Initialisierung abgeschlossen."
     depends_on:
       mongodb:
         condition: service_healthy
+    networks:
+      - internal
     restart: "no"
+    profiles:
+      - init
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
-      args:
-        MONGODB_COLLECTION_PREFIX: ${MONGODB_COLLECTION_PREFIX:-local_}
-    container_name: klick-and-zeugnis-app
+    image: ${GHCR_IMAGE_APP}:${IMAGE_TAG}
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-3000}:3000"
-    env_file:
-      - path: .env
-        required: false
     environment:
       DATABASE_URL: mongodb://mongodb:27017/klick-and-zeugnis?replicaSet=rs0
-      MONGODB_COLLECTION_PREFIX: ${MONGODB_COLLECTION_PREFIX:-local_}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-local-dev-secret-bitte-in-produktion-aendern}
+      MONGODB_COLLECTION_PREFIX: prod_
+      NEXTAUTH_URL: https://klick-and-zeugnis.de
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       PRISMA_CLIENT_ENGINE_TYPE: binary
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       mongodb:
         condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=klick-proxy
+      - traefik.http.routers.klick-prod.rule=Host(`klick-and-zeugnis.de`)
+      - traefik.http.routers.klick-prod.entrypoints=websecure
+      - traefik.http.routers.klick-prod.tls.certresolver=letsencrypt
+      - traefik.http.services.klick-prod.loadbalancer.server.port=3000
     healthcheck:
       test:
         [
@@ -96,6 +84,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+networks:
+  internal:
+  proxy:
+    external: true
+    name: klick-proxy
 
 volumes:
   mongodb_data:

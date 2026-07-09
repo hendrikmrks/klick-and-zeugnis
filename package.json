@@ -16,10 +16,13 @@
     "db:reseed": "node scripts/reseed.mjs",
     "db:reset": "docker compose down -v && docker compose up -d --build",
     "prisma:sync": "node scripts/sync-prisma-collections.mjs",
-    "docker:up": "docker compose up -d",
+    "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f app",
+    "docker:logs:all": "docker compose logs -f",
+    "docker:restart": "docker compose restart app",
+    "docker:db-only": "docker compose up -d mongodb",
     "postinstall": "node scripts/sync-prisma-collections.mjs && prisma generate --schema=prisma/.schema.resolved.prisma"
   },
   "prisma": {

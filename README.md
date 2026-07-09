@@ -2,91 +2,114 @@
 
 Next.js-Anwendung zur KI-gestützten Erstellung von Schulzeugnissen.
 
-## Voraussetzungen
+## Schnellstart mit Docker (empfohlen)
 
-- [Node.js](https://nodejs.org/) 20 LTS (empfohlen; Node 22+ und Windows ARM64 siehe Hinweis unten)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (für die lokale MongoDB)
-- Optional: OpenAI API-Key (ohne Key wird ein Mock-Text generiert)
+Die komplette Anwendung inklusive MongoDB läuft in Docker-Containern – ohne lokale Node.js-Installation.
 
-## Lokale Entwicklung
-
-### 1. Abhängigkeiten installieren
+### 1. Umgebungsvariablen einrichten
 
 ```bash
-npm install
+copy .env.docker.example .env
 ```
 
-### 2. Umgebungsvariablen einrichten
+Passe mindestens `NEXTAUTH_SECRET` an (langer Zufallsstring). `OPENAI_API_KEY` ist optional.
 
-Kopiere `.env.example` nach `.env` und passe die Werte an:
-
-```bash
-copy .env.example .env
-```
-
-Wichtig:
-- `NEXTAUTH_SECRET` – beliebiger langer Zufallsstring
-- `OPENAI_API_KEY` – optional; ohne gültigen Key wird ein Mock-Zeugnistext erzeugt
-
-### 3. MongoDB in Docker starten
+### 2. Stack starten
 
 ```bash
 npm run docker:up
 ```
 
-Die Datenbank läuft dann auf `localhost:27017` (ohne Authentifizierung, nur für lokale Entwicklung).
+oder direkt:
 
-### 4. Datenbankschema anlegen und Testdaten laden
+```bash
+docker compose up -d --build
+```
+
+Beim ersten Start passiert automatisch:
+
+1. MongoDB startet (mit Replica Set für Prisma-Transaktionen)
+2. `db-init` legt Schema an und spielt Testdaten ein
+3. Die Next.js-App startet auf Port 3000
+
+### 3. Anwendung öffnen
+
+- **App:** [http://localhost:3000](http://localhost:3000)
+- **Test-Login:** `test@example.com` / `secret123`
+- **Admin-Login:** `admin@example.com` / `admin123`
+
+### Docker-Befehle
+
+| Befehl | Beschreibung |
+|--------|--------------|
+| `npm run docker:up` | App + MongoDB bauen und starten |
+| `npm run docker:down` | Alle Container stoppen |
+| `npm run docker:logs` | App-Logs live anzeigen |
+| `npm run docker:logs:all` | Logs aller Services |
+| `npm run docker:restart` | App-Container neu starten |
+| `npm run docker:build` | Images neu bauen |
+| `npm run db:reset` | Volumes löschen und Stack neu aufsetzen |
+
+### Konfiguration (`.env`)
+
+| Variable | Standard | Beschreibung |
+|----------|----------|--------------|
+| `APP_PORT` | `3000` | Port der Web-App auf dem Host |
+| `MONGODB_PORT` | `27017` | Port von MongoDB auf dem Host |
+| `MONGODB_COLLECTION_PREFIX` | `local_` | Prisma Collection-Präfix (Build-Zeit!) |
+| `NEXTAUTH_URL` | `http://localhost:3000` | Öffentliche URL der App |
+| `NEXTAUTH_SECRET` | – | Pflicht: Geheimer Session-Schlüssel |
+| `OPENAI_API_KEY` | – | Optional: ohne Key wird Mock-Text genutzt |
+| `RUN_DB_SEED` | `true` | Testdaten beim Start einspielen |
+| `FORCE_SEED_RESET` | `false` | Bei `true`: alle Daten vor Seed löschen |
+
+**Hinweis:** `MONGODB_COLLECTION_PREFIX` wird beim Docker-Build in Prisma eingefroren. Nach Änderung des Präfixes `docker compose build --no-cache` ausführen.
+
+Datenbank komplett zurücksetzen:
+
+```bash
+npm run db:reset
+```
+
+## Lokale Entwicklung (ohne App-Container)
+
+Falls du nur MongoDB in Docker nutzen und die App lokal mit Hot-Reload entwickeln möchtest:
+
+### Voraussetzungen
+
+- [Node.js](https://nodejs.org/) 20 LTS
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+### 1. Abhängigkeiten und Umgebung
+
+```bash
+npm install
+copy .env.docker.example .env
+```
+
+Setze in `.env` für lokale Entwicklung:
+
+```env
+DATABASE_URL=mongodb://localhost:27017/klick-and-zeugnis?directConnection=true
+MONGODB_COLLECTION_PREFIX=dev_
+```
+
+### 2. Nur MongoDB starten
+
+```bash
+npm run docker:db-only
+```
+
+### 3. Datenbank einrichten
 
 ```bash
 npm run db:setup
 ```
 
-Das legt das Prisma-Schema an und erstellt einen Testbenutzer:
-- E-Mail: `test@example.com`
-- Passwort: `secret123`
-
-### 5. Entwicklungsserver starten
+### 4. Entwicklungsserver
 
 ```bash
 npm run dev
-```
-
-Die App ist unter [http://localhost:3000](http://localhost:3000) erreichbar.
-
-## Mit Docker starten (App + Datenbank)
-
-Die komplette Anwendung inklusive MongoDB als Container starten:
-
-```bash
-copy .env.example .env
-docker compose up -d --build
-```
-
-Beim ersten Start werden automatisch Datenbankschema und Testdaten angelegt.
-
-- App: [http://localhost:3000](http://localhost:3000)
-- Test-Login: `test@example.com` / `secret123`
-
-Optional in `.env` setzen:
-
-```env
-NEXTAUTH_SECRET=ein-langer-zufaelliger-string
-OPENAI_API_KEY=sk-...
-RUN_DB_SEED=true
-```
-
-| Befehl | Beschreibung |
-|--------|--------------|
-| `docker compose up -d --build` | App und MongoDB bauen und starten |
-| `docker compose down` | Container stoppen |
-| `docker compose logs -f app` | App-Logs anzeigen |
-| `docker compose up -d --build app` | Nur App neu bauen |
-
-Nur die Datenbank für lokale Entwicklung mit `npm run dev`:
-
-```bash
-docker compose up -d mongodb
 ```
 
 ## Nützliche Befehle (lokale Entwicklung)
@@ -95,14 +118,33 @@ docker compose up -d mongodb
 |--------|--------------|
 | `npm run dev` | Entwicklungsserver starten |
 | `npm run build` | Produktions-Build erstellen |
-| `npm run docker:up` | MongoDB-Container starten |
-| `npm run docker:down` | MongoDB-Container stoppen |
+| `npm run lint` | ESLint ausführen |
 | `npm run db:push` | Prisma-Schema in die DB schreiben |
 | `npm run db:seed` | Testdaten einspielen |
+| `npm run db:reseed` | Daten löschen und neu seeden |
 
 ## Windows ARM64 (Snapdragon)
 
-Auf Windows-ARM-Geräten ist `PRISMA_CLIENT_ENGINE_TYPE=binary` in der `.env` gesetzt. Damit startet Prisma die Query Engine als separaten Prozess (x64-Emulation). Falls weiterhin Probleme auftreten, nutze die **x64-Version von Node.js 20 LTS**.
+`PRISMA_CLIENT_ENGINE_TYPE=binary` ist in `.env.docker.example` gesetzt. Falls Probleme auftreten, nutze die **x64-Version von Node.js 20 LTS** für lokale Entwicklung.
+
+## Architektur (Docker)
+
+```text
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   mongodb   │────▶│   db-init   │────▶│     app     │
+│  (mongo:7)  │     │ (einmalig)  │     │  (Next.js)  │
+│  Port 27017 │     │ push + seed │     │  Port 3000  │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+## Server-Deployment (Test + Produktion)
+
+Für den Betrieb auf einem Linux-Server mit automatischem Deploy via GitHub Actions:
+
+- **Test:** `test.klick-and-zeugnis.de` ← Push auf `main`
+- **Produktion:** `klick-and-zeugnis.de` ← GitHub Release
+
+Ausführliche Anleitung: [deploy/README.md](deploy/README.md)
 
 ## Technologie-Stack
 
@@ -110,3 +152,4 @@ Auf Windows-ARM-Geräten ist `PRISMA_CLIENT_ENGINE_TYPE=binary` in der `.env` ge
 - **Auth:** NextAuth.js (Credentials)
 - **Datenbank:** MongoDB (Prisma ORM)
 - **KI:** OpenAI API
+- **Deployment:** Docker Compose

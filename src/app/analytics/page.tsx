@@ -5,7 +5,7 @@ import PageContainer from "@/components/layout/PageContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
 import UsageProgress from "@/components/usage/UsageProgress";
-import { useMe } from "@/lib/hooks/useMe";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import type { UsageData } from "@/types/app";
 import Link from "next/link";
 import { BarChart3, FileText, Sparkles, Type } from "lucide-react";
@@ -48,22 +48,39 @@ function formatLimit(val: number) {
 }
 
 export default function AnalyticsPage() {
-  const { user, isLoading, isError } = useMe();
+  const { user, isLoading, isAuthenticated } = useRequireAuth();
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(true);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/usage")
-      .then((res) => res.json())
-      .then((data) => setUsage(data))
-      .finally(() => setLoadingUsage(false));
-  }, []);
+    if (!isAuthenticated) return;
 
-  if (isLoading || loadingUsage) return <LoadingState label="Statistiken werden geladen…" />;
-  if (isError || !user) return <p className="p-8 text-center text-slate-600">Nicht eingeloggt</p>;
+    fetch("/api/usage")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+        return res.json() as Promise<UsageData>;
+      })
+      .then((data) => setUsage(data))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Statistiken konnten nicht geladen werden.";
+        setUsageError(message);
+      })
+      .finally(() => setLoadingUsage(false));
+  }, [isAuthenticated]);
+
+  if (isLoading || !isAuthenticated || !user) return <LoadingState label="Statistiken werden geladen…" />;
+  if (loadingUsage) return <LoadingState label="Statistiken werden geladen…" />;
+  if (usageError) {
+    return (
+      <PageContainer>
+        <p className="p-8 text-center text-red-600">{usageError}</p>
+      </PageContainer>
+    );
+  }
   if (!usage) return <p className="p-8 text-center text-slate-600">Keine Daten verfügbar</p>;
 
-  const planLabel = user.subscriptionLevel ?? "Free";
+  const planLabel = usage.subscriptionLevel ?? user.subscriptionLevel ?? "Free";
 
   return (
     <PageContainer>
@@ -87,7 +104,7 @@ export default function AnalyticsPage() {
         <StatCard
           icon={FileText}
           label="Gespeichert"
-          value={`${usage.monthSaved} / ${formatLimit(usage.saveLimit)}`}
+          value={`${usage.totalSaved} / ${formatLimit(usage.saveLimit)}`}
           hint="Dauerhaft gespeicherte Zeugnisse"
           accent="violet"
         />
@@ -126,7 +143,7 @@ export default function AnalyticsPage() {
           <div className="mt-6">
             <UsageProgress
               label="Gespeichert"
-              value={usage.monthSaved}
+              value={usage.totalSaved}
               max={usage.saveLimit}
             />
           </div>

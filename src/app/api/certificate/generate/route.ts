@@ -2,6 +2,13 @@ import { getAuthSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
+import {
+  countWords,
+  GENERATE_INPUT_LIMITS,
+  getMonthStart,
+  getPlanLimitsForUser,
+  sanitizeStringArray,
+} from "@/lib/plan-limits";
 
 function hasOpenAiKey(): boolean {
   const key = process.env.OPENAI_API_KEY?.trim();
@@ -59,6 +66,35 @@ async function generateCertificateText(
   return completion.choices[0].message.content ?? buildMockCertificateText(name, gender, grade, socialSkills, roles);
 }
 
+function parseGenerateInput(body: unknown) {
+  if (!body || typeof body !== "object") {
+    return { error: "Ungültige Anfrage." };
+  }
+
+  const { name, gender, grade, socialSkills, roles } = body as Record<string, unknown>;
+
+  if (typeof name !== "string" || !name.trim()) {
+    return { error: "Name ist erforderlich." };
+  }
+  if (typeof gender !== "string" || !gender.trim()) {
+    return { error: "Geschlecht ist erforderlich." };
+  }
+  if (typeof grade !== "string" || !grade.trim()) {
+    return { error: "Klasse ist erforderlich." };
+  }
+
+  const limits = GENERATE_INPUT_LIMITS;
+  return {
+    data: {
+      name: name.trim().slice(0, limits.nameMaxLength),
+      gender: gender.trim().slice(0, limits.genderMaxLength),
+      grade: grade.trim().slice(0, limits.gradeMaxLength),
+      socialSkills: sanitizeStringArray(socialSkills, limits.maxSkills, limits.itemMaxLength),
+      roles: sanitizeStringArray(roles, limits.maxRoles, limits.itemMaxLength),
+    },
+  };
+}
+
 export async function POST(req: Request) {
   const session = await getAuthSession();
 
@@ -68,63 +104,73 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, gender, grade, socialSkills, roles } = body;
+    const parsed = parseGenerateInput(body);
+    if ("error" in parsed) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
 
-    // Hole das User-Objekt inkl. Abo-Level
+    const { name, gender, grade, socialSkills, roles } = parsed.data;
+
     const dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, subscriptionLevel: true },
+      select: { id: true, subscriptionLevel: true, subscriptionExpiresAt: true },
     });
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    // Limits je nach Abo
-    const planLimits: Record<string, { monthLimit: number; saveLimit: number }> = {
-      Free: { monthLimit: 5, saveLimit: 1 },
-      Pro: { monthLimit: 15, saveLimit: 5 },
-      Premium: { monthLimit: 70, saveLimit: 50 },
-      Vip: { monthLimit: Number.MAX_SAFE_INTEGER, saveLimit: Number.MAX_SAFE_INTEGER },
-    };
-    const { monthLimit } = planLimits[dbUser.subscriptionLevel] ?? planLimits["Free"];
-    // Generierte Zeugnisse diesen Monat zählen
-    const generatedCount = await prisma.generatedCertificate.count({
-      where: {
-        userId: dbUser.id,
-        createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
-      },
-    });
-    if (generatedCount >= monthLimit) {
-      return NextResponse.json({ error: "Limit für generierte Zeugnisse erreicht. Upgrade nötig." }, { status: 403 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const certificateText = await generateCertificateText(name, gender, grade, socialSkills, roles);
+    const { monthLimit } = getPlanLimitsForUser(dbUser);
+    const monthStart = getMonthStart();
 
-    // Wörter zählen
-    const wordCount = certificateText
-      .split(/\s+/)
-      .filter((w) => w.trim().length > 0).length;
-
-    // Generierung in Datenbank loggen
-    try {
-      await prisma.generatedCertificate.create({
-        data: {
+    const reservation = await prisma.$transaction(async (tx) => {
+      const generatedCount = await tx.generatedCertificate.count({
+        where: {
           userId: dbUser.id,
-          text: certificateText,
-          wordCount,
+          createdAt: { gte: monthStart },
         },
       });
-    } catch (e) {
-      // Fehler beim Loggen ignorieren, Generierung trotzdem ausliefern
-      console.error("Fehler beim Loggen der Generierung", e);
+
+      if (generatedCount >= monthLimit) {
+        return null;
+      }
+
+      return tx.generatedCertificate.create({
+        data: {
+          userId: dbUser.id,
+          text: "",
+          wordCount: 0,
+        },
+      });
+    });
+
+    if (!reservation) {
+      return NextResponse.json(
+        { error: "Limit für generierte Zeugnisse erreicht. Upgrade nötig." },
+        { status: 403 }
+      );
     }
 
-    return NextResponse.json({
-      text: certificateText,
-      grade,
-      socialSkills,
-      roles,
-      wordCount,
-    });
+    try {
+      const certificateText = await generateCertificateText(name, gender, grade, socialSkills, roles);
+      const wordCount = countWords(certificateText);
+
+      await prisma.generatedCertificate.update({
+        where: { id: reservation.id },
+        data: { text: certificateText, wordCount },
+      });
+
+      return NextResponse.json({
+        generatedId: reservation.id,
+        text: certificateText,
+        grade,
+        socialSkills,
+        roles,
+        wordCount,
+      });
+    } catch (err) {
+      await prisma.generatedCertificate.delete({ where: { id: reservation.id } }).catch(() => undefined);
+      throw err;
+    }
   } catch (err) {
     console.error("Error generating certificate", err);
     return NextResponse.json(

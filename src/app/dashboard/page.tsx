@@ -8,7 +8,7 @@ import CertificateViewer from "@/components/CertificateViewer";
 import PageContainer from "@/components/layout/PageContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
-import { useMe } from "@/lib/hooks/useMe";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { useGenerateCertificate } from "@/lib/hooks/useGenerateCertificate";
 import { useRouter } from "next/navigation";
 import type { UsageData } from "@/types/app";
@@ -20,7 +20,7 @@ import { hasClassOrganization } from "@/lib/subscription";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isLoading, isError } = useMe();
+  const { user, isLoading, isAuthenticated } = useRequireAuth();
 
   const [name, setName] = useState("Max Mustermann");
   const [gender, setGender] = useState("männlich");
@@ -41,9 +41,19 @@ export default function DashboardPage() {
     Klassensprecher: false,
     Sportwart: false,
   });
-  const { generateCertificate, certificate, loading, error, setError } = useGenerateCertificate();
+  const {
+    generateCertificate,
+    certificate,
+    generatedId,
+    loading,
+    error,
+    setError,
+    clearCertificate,
+  } = useGenerateCertificate();
   const [usageKey, setUsageKey] = useState(0);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleUsage = useCallback((data: UsageData) => {
     setUsage(data);
@@ -54,10 +64,16 @@ export default function DashboardPage() {
     }
   }, [error, loading, setError]);
 
-  if (isLoading) return <LoadingState />;
-  if (isError || !user) return <p className="p-8 text-center text-slate-600">Nicht eingeloggt</p>;
+  if (isLoading || !isAuthenticated || !user) return <LoadingState />;
 
-  const handleClear = () => window.location.reload();
+  const subscriptionLevel = usage?.subscriptionLevel ?? user.subscriptionLevel;
+  const canUseClasses = hasClassOrganization(subscriptionLevel);
+
+  const handleClear = () => {
+    clearCertificate();
+    setSaveError(null);
+    setSaveSuccess(false);
+  };
 
   const handleLimit = () => {
     router.push("/subscription");
@@ -65,6 +81,8 @@ export default function DashboardPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+    setSaveSuccess(false);
     if (usage && usage.monthGenerated >= usage.monthLimit) {
       handleLimit();
       return;
@@ -76,32 +94,48 @@ export default function DashboardPage() {
       socialSkills: selectedSocialSkills,
       roles: selectedRoles,
     });
-    if (result && typeof result === "string") setUsageKey((k) => k + 1);
+    if (result) setUsageKey((k) => k + 1);
   };
 
-  const canUseClasses = hasClassOrganization(user.subscriptionLevel);
-
   const handleSave = async () => {
-    if (usage && usage.monthSaved >= usage.saveLimit) {
+    setSaveError(null);
+    setSaveSuccess(false);
+    if (usage && usage.totalSaved >= usage.saveLimit) {
       handleLimit();
       return;
     }
-    if (!certificate) return;
+    if (!certificate || !generatedId) {
+      setSaveError("Bitte generiere zuerst ein Zeugnis.");
+      return;
+    }
     try {
       const res = await fetch("/api/certificate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: certificate, name, gender, grade, schoolYear,
+          text: certificate,
+          generatedId,
+          name,
+          gender,
+          grade,
+          schoolYear,
           className: canUseClasses ? className : undefined,
           socialSkills: Object.entries(socialSkills).map(([k, v]) => `${k}: ${v}`),
           roles: Object.entries(roles).filter(([, v]) => v).map(([k]) => k),
         }),
       });
-      if (!res.ok) throw new Error(`Fehler: ${res.status}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : `Speichern fehlgeschlagen (${res.status})`
+        );
+      }
+      setSaveSuccess(true);
+      clearCertificate();
       setUsageKey((k) => k + 1);
     } catch (err: unknown) {
-      console.error(err);
+      const message = err instanceof Error ? err.message : "Speichern fehlgeschlagen.";
+      setSaveError(message);
     }
   };
 
@@ -111,7 +145,7 @@ export default function DashboardPage() {
         title={`Hallo, ${user.firstName ?? "Lehrkraft"}!`}
         description="Erstelle individuelle Zeugnistexte für deine Schülerinnen und Schüler."
       >
-        <Badge variant="secondary">{user.subscriptionLevel}-Tarif</Badge>
+        <Badge variant="secondary">{subscriptionLevel}-Tarif</Badge>
       </PageHeader>
 
       {error === "LIMIT_REACHED" && (
@@ -124,6 +158,18 @@ export default function DashboardPage() {
               <Link href="/subscription" className="font-medium underline">Tarife ansehen</Link>
             </p>
           </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {saveError}
+        </div>
+      )}
+
+      {saveSuccess && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          Zeugnis erfolgreich gespeichert.
         </div>
       )}
 
@@ -147,7 +193,7 @@ export default function DashboardPage() {
             placeholder="Generiere links ein neues Zeugnis – der Text erscheint hier."
             onClear={handleClear}
             onSave={handleSave}
-            canSave={Boolean(certificate)}
+            canSave={Boolean(certificate && generatedId)}
             studentName={name}
             canUseClasses={canUseClasses}
             className={className}

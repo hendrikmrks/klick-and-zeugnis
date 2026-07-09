@@ -6,7 +6,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
 import CurrentPlan from "@/components/subscription/CurrentPlan";
 import PlansGrid from "@/components/subscription/PlansGrid";
-import { useMe } from "@/lib/hooks/useMe";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { isDowngrade, isUpgrade } from "@/lib/subscription";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
@@ -20,7 +20,7 @@ type SubRequest = {
 };
 
 export default function SubscriptionPage() {
-  const { user, isLoading, isError, refetch } = useMe();
+  const { user, isLoading, isAuthenticated, refetch } = useRequireAuth();
   const [currentPlan, setCurrentPlan] = useState("Free");
   const [requests, setRequests] = useState<SubRequest[]>([]);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
@@ -105,8 +105,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  if (isLoading) return <LoadingState />;
-  if (isError || !user) return <p className="p-8 text-center text-slate-600">Nicht eingeloggt</p>;
+  if (isLoading || !isAuthenticated || !user) return <LoadingState />;
 
   return (
     <PageContainer>

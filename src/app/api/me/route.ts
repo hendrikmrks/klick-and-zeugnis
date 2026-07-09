@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/auth";
+import { getEffectiveSubscriptionLevel } from "@/lib/subscription";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -29,8 +30,18 @@ export async function GET() {
   });
 
   if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json(user);
+  const effectiveSubscriptionLevel = getEffectiveSubscriptionLevel(user);
+
+  return NextResponse.json({
+    ...user,
+    subscriptionLevel: effectiveSubscriptionLevel,
+    subscriptionExpiresAt: user.subscriptionExpiresAt?.toISOString() ?? undefined,
+    birthDate: user.birthDate?.toISOString() ?? undefined,
+    emailVerified: user.emailVerified?.toISOString() ?? undefined,
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+  });
 }
