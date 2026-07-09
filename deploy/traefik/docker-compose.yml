@@ -27,8 +27,8 @@ services:
 
 networks:
   proxy:
+    external: true
     name: klick-proxy
-    driver: bridge
 
 volumes:
   traefik_letsencrypt:
