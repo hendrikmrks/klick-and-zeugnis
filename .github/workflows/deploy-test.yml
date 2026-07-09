@@ -16,12 +16,12 @@ permissions:
 env:
   REGISTRY: ghcr.io
   COLLECTION_PREFIX: test_
+  DEPLOY_ROOT: /opt/klick-and-zeugnis
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
+  deploy:
+    runs-on: [self-hosted, klick]
+    environment: test
     steps:
       - uses: actions/checkout@v4
 
@@ -58,8 +58,6 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image_app }}:${{ steps.meta.outputs.image_tag }}
             ${{ steps.meta.outputs.image_app }}:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - uses: docker/build-push-action@v6
         with:
@@ -72,49 +70,30 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image_db_init }}:${{ steps.meta.outputs.image_tag }}
             ${{ steps.meta.outputs.image_db_init }}:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    environment: test
-    steps:
-      - uses: actions/checkout@v4
+      - name: Sync deploy configs
+        run: |
+          for dir in traefik test prod scripts; do
+            mkdir -p "${{ env.DEPLOY_ROOT }}/$dir"
+            rsync -a --exclude '.env' "deploy/$dir/" "${{ env.DEPLOY_ROOT }}/$dir/"
+          done
+          chmod +x "${{ env.DEPLOY_ROOT }}/scripts/"*.sh
 
-      - name: Upload deploy configs
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          source: deploy/traefik,deploy/test,deploy/prod,deploy/scripts
-          target: /opt/klick-and-zeugnis
-          strip_components: 1
+      - name: Start Traefik
+        run: |
+          if [ ! -f "${{ env.DEPLOY_ROOT }}/traefik/.env" ]; then
+            cp "${{ env.DEPLOY_ROOT }}/traefik/.env.example" "${{ env.DEPLOY_ROOT }}/traefik/.env"
+          fi
+          if ! docker network inspect klick-proxy >/dev/null 2>&1; then
+            docker network create klick-proxy
+          fi
+          cd "${{ env.DEPLOY_ROOT }}/traefik"
+          docker compose -p klick-proxy-stack up -d
 
-      - name: Deploy to test server
-        uses: appleboy/ssh-action@v1
+      - name: Deploy test stack
         env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
           GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
           GHCR_USERNAME: ${{ github.repository_owner }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: true
-          envs: IMAGE_TAG,GHCR_TOKEN,GHCR_USERNAME
-          script: |
-            set -euo pipefail
-            chmod +x /opt/klick-and-zeugnis/scripts/*.sh
-            if [ ! -f /opt/klick-and-zeugnis/traefik/.env ]; then
-              cp /opt/klick-and-zeugnis/traefik/.env.example /opt/klick-and-zeugnis/traefik/.env
-            fi
-            if ! docker network inspect klick-proxy >/dev/null 2>&1; then
-              docker network create klick-proxy
-            fi
-            cd /opt/klick-and-zeugnis/traefik
-            docker compose -p klick-proxy-stack up -d
-            /opt/klick-and-zeugnis/scripts/deploy.sh test "${IMAGE_TAG}"
+        run: |
+          "${{ env.DEPLOY_ROOT }}/scripts/deploy.sh" test "${IMAGE_TAG}"

@@ -84,21 +84,32 @@ ACME_EMAIL=admin@klick-and-zeugnis.de
 
 > `NEXTAUTH_SECRET` muss pro Umgebung unterschiedlich sein. Test und Produktion dürfen nicht denselben Secret teilen.
 
-### 4. SSH-Zugang für GitHub Actions
+### 4. Self-Hosted GitHub Actions Runner (kostenlos)
 
-Auf dem Server einen dedizierten User anlegen (z. B. `deploy`) und den öffentlichen Schlüssel hinterlegen:
+Statt kostenpflichtiger GitHub-hosted Runner läuft alles auf deinem Server (`188.245.247.164`).
+
+**Voraussetzungen:** User `deploy` in der Gruppe `docker`.
+
+1. Token holen: **GitHub → Repository → Settings → Actions → Runners → New self-hosted runner**
+2. Auf dem Server:
 
 ```bash
-# Auf dem Server
-sudo adduser deploy
-sudo usermod -aG docker deploy
-sudo mkdir -p /home/deploy/.ssh
-# Öffentlichen Schlüssel in /home/deploy/.ssh/authorized_keys einfügen
-sudo chown -R deploy:deploy /home/deploy/.ssh
-sudo chmod 700 /home/deploy/.ssh
-sudo chmod 600 /home/deploy/.ssh/authorized_keys
-sudo chown -R deploy:deploy /opt/klick-and-zeugnis
+ssh deploy@188.245.247.164
+export RUNNER_TOKEN=dein_einmaliger_token
+bash /opt/klick-and-zeugnis/scripts/install-github-runner.sh
 ```
+
+Der Runner bekommt das Label **`klick`**. Alle Workflows nutzen `runs-on: [self-hosted, klick]`.
+
+Status prüfen:
+
+```bash
+sudo /opt/actions-runner/svc.sh status
+```
+
+GitHub → **Settings → Actions → Runners** → Runner sollte **Idle** (grün) sein.
+
+> **Hinweis:** Self-hosted Runner sind für private Repos **kostenlos** (keine Actions-Minuten). Der Build läuft direkt auf dem Server – SSH-Secrets werden nicht mehr benötigt.
 
 ## GitHub-Konfiguration
 
@@ -106,11 +117,9 @@ sudo chown -R deploy:deploy /opt/klick-and-zeugnis
 
 | Secret | Beschreibung |
 |--------|--------------|
-| `SSH_HOST` | IP oder Hostname des Servers |
-| `SSH_USER` | SSH-Benutzer (z. B. `deploy`) |
-| `SSH_PRIVATE_KEY` | Privater SSH-Schlüssel (PEM, ohne Passphrase) |
-| `SSH_PORT` | Optional, Standard `22` |
-| `DEPLOY_GHCR_TOKEN` | GitHub PAT mit `read:packages` zum Image-Pull auf dem Server |
+| `DEPLOY_GHCR_TOKEN` | GitHub PAT mit `read:packages` und `write:packages` (Image Pull/Push) |
+
+`SSH_HOST`, `SSH_USER` und `SSH_PRIVATE_KEY` werden mit Self-Hosted Runner **nicht mehr benötigt**.
 
 ### GitHub Environments
 
