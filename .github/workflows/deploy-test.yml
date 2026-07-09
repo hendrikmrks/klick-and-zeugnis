@@ -3,6 +3,7 @@ name: Deploy Test
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-test
@@ -17,8 +18,10 @@ env:
   COLLECTION_PREFIX: test_
 
 jobs:
-  lint:
+  build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,16 +30,8 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - run: npm ci
-      - run: npm run lint
-
-  build-and-push:
-    needs: lint
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.image_tag }}
-    steps:
-      - uses: actions/checkout@v4
+      - name: Lint
+        run: npm ci && npm run lint
 
       - name: Prepare image names
         id: meta
