@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { Flag } from "lucide-react";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   studentName?: string;
   certificateId?: string;
   onSuccess?: () => void;
+  compact?: boolean;
 };
 
 export default function ReportCertificateButton({
@@ -17,6 +19,7 @@ export default function ReportCertificateButton({
   studentName,
   certificateId,
   onSuccess,
+  compact = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -55,16 +58,16 @@ export default function ReportCertificateButton({
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="h-9 w-full gap-1.5 text-xs sm:text-sm"
+        size={compact ? "xs" : "sm"}
+        className={cn(!compact && "w-full", compact && "shrink-0")}
         onClick={() => setOpen(true)}
       >
         <Flag className="h-3.5 w-3.5 shrink-0" />
-        Zeugnistext melden
+        {compact ? "Melden" : "Zeugnistext melden"}
       </Button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">Zeugnistext melden</h3>
             <p className="mt-2 text-sm text-slate-600">
@@ -84,16 +87,16 @@ export default function ReportCertificateButton({
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="z. B. unpassende Formulierung, faktischer Fehler, unangemessener Ton …"
-                    className="min-h-[100px] w-full rounded-lg border border-slate-200 p-3 text-sm"
+                    className="min-h-[100px] w-full rounded-lg border border-slate-200 p-3 text-sm focus-visible:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20"
                     required
                   />
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                     Abbrechen
                   </Button>
-                  <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" size="sm" disabled={loading}>
                     {loading ? "Wird gesendet…" : "Meldung absenden"}
                   </Button>
                 </div>

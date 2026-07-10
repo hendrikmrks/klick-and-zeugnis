@@ -70,7 +70,7 @@ export const authOptions: AuthOptions = {
     },
   },
   pages: {
-    signIn: "/auth/login",
+    signIn: "/?auth=login",
   },
 };
 

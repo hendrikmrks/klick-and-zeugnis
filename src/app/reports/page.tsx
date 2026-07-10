@@ -10,7 +10,9 @@ import { hasClassOrganization } from "@/lib/subscription";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import Alert from "@/components/layout/Alert";
+import SectionCard from "@/components/layout/SectionCard";
+import { PrivacyAdvancedKeyUploadPanel } from "@/components/settings/PrivacyAdvancedSection";
 import { Plus } from "lucide-react";
 
 type UserReport = {
@@ -65,7 +67,7 @@ export default function ReportsPage() {
             : "Alle deine gespeicherten Zeugnistexte an einem Ort – kopieren, melden oder löschen."
         }
       >
-        <Button asChild>
+        <Button asChild size="sm">
           <Link href="/dashboard">
             <Plus className="h-4 w-4" />
             Neues Zeugnis
@@ -73,45 +75,47 @@ export default function ReportsPage() {
         </Button>
       </PageHeader>
 
+      {user.privacyAdvancedModeEnabled && (
+        <div className="mb-4">
+          <PrivacyAdvancedKeyUploadPanel onUploaded={() => setReloadSignal((s) => s + 1)} />
+        </div>
+      )}
+
       {classOrganizationEnabled ? (
         <div className="mb-4 flex flex-wrap gap-2">
           {filterOptions.map((opt) => (
-            <button
+            <Button
               key={opt.label}
               type="button"
+              size="sm"
+              variant={classFilter === opt.value ? "default" : "secondary"}
+              className="rounded-full"
               onClick={() => setClassFilter(opt.value)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                classFilter === opt.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              )}
             >
               {opt.label}
-            </button>
+            </Button>
           ))}
         </div>
       ) : (
-        <p className="mb-4 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm text-slate-600">
+        <Alert variant="info" className="mb-4">
           Ab Premium kannst du Zeugnisse Klassen zuordnen und danach sortieren.{" "}
-          <Link href="/subscription" className="font-medium text-blue-600 hover:underline">
+          <Link href="/subscription" className="font-medium underline">
             Tarif anfragen
           </Link>
-        </p>
+        </Alert>
       )}
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm md:p-6">
+      <SectionCard>
         <SavedCertificatesTable
           reloadSignal={reloadSignal}
           classFilter={classFilter}
           classOrganizationEnabled={classOrganizationEnabled}
           onDataChange={() => setReloadSignal((s) => s + 1)}
         />
-      </div>
+      </SectionCard>
 
       {userReports.length > 0 && (
-        <section className="mt-8 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Deine Meldungen & Feedback</h2>
+        <SectionCard title="Deine Meldungen & Feedback" className="mt-8">
           <ul className="space-y-4">
             {userReports.map((rep) => (
               <li key={rep.id} className="rounded-xl border border-slate-100 p-4">
@@ -137,7 +141,7 @@ export default function ReportsPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       )}
     </PageContainer>
   );

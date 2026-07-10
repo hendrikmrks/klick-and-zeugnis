@@ -14,8 +14,8 @@ type Props = {
 export default function UsageSection({ title, items }: Props) {
     return (
         <div className="space-y-2">
-            <h3 className="text-lg font-medium">{title}</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <h3 className="text-base font-semibold text-slate-700">{title}</h3>
+            <div className="grid gap-3">
                 {items.map((item) => (
                     <UsageItem
                         key={item.label}

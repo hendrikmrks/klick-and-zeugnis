@@ -35,7 +35,7 @@ export default function CertificateViewer({
   };
 
   return (
-    <div className="flex min-h-[360px] flex-col gap-4">
+    <div className="flex min-h-0 flex-col gap-4">
       <textarea
         readOnly
         value={displayText}
@@ -53,8 +53,8 @@ export default function CertificateViewer({
       )}
 
       <div className="space-y-2">
-        <div className="grid grid-cols-3 gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onClear} className="h-9 w-full gap-1.5 px-2 text-xs sm:text-sm">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Button type="button" variant="outline" size="sm" onClick={onClear} className="w-full">
             <RotateCcw className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Zurücksetzen</span>
           </Button>
@@ -64,18 +64,12 @@ export default function CertificateViewer({
             size="sm"
             onClick={handleCopy}
             disabled={isEmpty}
-            className="h-9 w-full gap-1.5 px-2 text-xs sm:text-sm"
+            className="w-full"
           >
             <Copy className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Kopieren</span>
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={onSave}
-            disabled={!canSave}
-            className="h-9 w-full gap-1.5 bg-blue-600 px-2 text-xs hover:bg-blue-700 sm:text-sm"
-          >
+          <Button type="button" size="sm" onClick={onSave} disabled={!canSave} className="w-full">
             <Save className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Speichern</span>
           </Button>

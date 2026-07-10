@@ -14,7 +14,7 @@ export default function LegalPage({ title, children }: Props) {
       <header className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto flex max-w-[90rem] items-center gap-2 px-4 py-4 md:px-8">
           <Link href="/" className="flex items-center gap-2 text-slate-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <GraduationCap className="h-4 w-4" />
             </span>
             <span className="font-bold">Klick & Zeugnis</span>

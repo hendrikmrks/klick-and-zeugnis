@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, KeyRound, Mail, Shield, Smartphone, Trash2, User } from "lucide-react";
 import { signOut } from "next-auth/react";
+import PrivacyAdvancedSection from "@/components/settings/PrivacyAdvancedSection";
 
 function formatDate(iso?: string) {
   if (!iso) return "–";
@@ -175,7 +176,8 @@ export default function SettingsPage() {
       setDeleteError(data.error ?? "Löschen fehlgeschlagen.");
       return;
     }
-    await signOut({ callbackUrl: "/auth/login" });
+    await fetch("/api/privacy-advanced/key", { method: "DELETE" }).catch(() => undefined);
+    await signOut({ callbackUrl: "/?auth=login" });
   };
 
   return (
@@ -249,7 +251,7 @@ export default function SettingsPage() {
               </div>
             </div>
             {profileError && <p className="text-sm text-red-600">{profileError}</p>}
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit">
               {profileSaved ? "Gespeichert ✓" : "Änderungen speichern"}
             </Button>
           </form>
@@ -398,7 +400,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={twoFaLoading}>
+              <Button type="submit" disabled={twoFaLoading}>
                 {twoFaLoading ? "Wird aktiviert…" : "2FA aktivieren"}
               </Button>
               <Button
@@ -417,7 +419,6 @@ export default function SettingsPage() {
         ) : (
           <Button
             type="button"
-            className="bg-blue-600 hover:bg-blue-700"
             onClick={startTwoFaSetup}
             disabled={twoFaLoading}
           >
@@ -426,6 +427,8 @@ export default function SettingsPage() {
           </Button>
         )}
       </section>
+
+      <PrivacyAdvancedSection user={user} onChanged={refetch} />
 
       <section className="mt-6 rounded-2xl border border-red-200 bg-red-50/30 p-6 shadow-sm">
         <div className="mb-2 flex items-center gap-2">

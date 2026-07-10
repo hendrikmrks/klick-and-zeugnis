@@ -8,6 +8,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Alert from "@/components/layout/Alert";
 import { cn } from "@/lib/utils";
 import { SUBSCRIPTION_LEVELS } from "@/lib/subscription";
 import {
@@ -175,21 +176,28 @@ export default function AdminPage() {
         description="Abonnements verwalten, Nutzer betreuen und gemeldete Zeugnistexte prüfen."
       />
 
-      {loadError && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {loadError}
-        </div>
-      )}
+      {loadError && <Alert variant="error">{loadError}</Alert>}
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div
+        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1"
+        role="tablist"
+        aria-label="Admin-Bereiche"
+      >
         {tabs.map(({ id, label, icon: Icon }) => (
           <Button
             key={id}
-            variant={tab === id ? "default" : "outline"}
-            className={tab === id ? "bg-blue-600 hover:bg-blue-700" : ""}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            size="sm"
+            variant={tab === id ? "default" : "ghost"}
+            className={cn(
+              "rounded-lg",
+              tab !== id && "text-slate-600 hover:bg-white/80 hover:text-slate-900"
+            )}
             onClick={() => setTab(id)}
           >
-            <Icon className="mr-2 h-4 w-4" />
+            <Icon className="h-4 w-4" />
             {label}
           </Button>
         ))}
@@ -341,11 +349,7 @@ export default function AdminPage() {
                       value={feedbackDraft[rep.id] ?? ""}
                       onChange={(e) => setFeedbackDraft((d) => ({ ...d, [rep.id]: e.target.value }))}
                     />
-                    <Button
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700"
-                      onClick={() => handleReportFeedback(rep.id)}
-                    >
+                    <Button size="sm" onClick={() => handleReportFeedback(rep.id)}>
                       Feedback senden
                     </Button>
                   </div>

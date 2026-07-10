@@ -36,7 +36,7 @@ export default function NavBar() {
           href="/dashboard"
           className="flex min-w-0 shrink items-center gap-2 text-slate-900"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
             <GraduationCap className="h-4 w-4" />
           </span>
           <span className="truncate text-base font-bold tracking-tight sm:text-lg">

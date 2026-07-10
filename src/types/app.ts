@@ -10,8 +10,16 @@ export type CertificateRecord = {
   socialSkills: string[];
   roles: string[];
   wordCount: number;
+  isPrivacyProtected?: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PrivacyAdvancedStatus = {
+  enabled: boolean;
+  keyLoaded: boolean;
+  keyExpiresAt: number | null;
+  mappingCount: number;
 };
 
 export type UsageData = {

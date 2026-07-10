@@ -29,7 +29,7 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500">
-        <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+        <Avatar className="h-9 w-9 border border-slate-200 shadow-sm">
           <AvatarImage src={session?.user?.image ?? undefined} alt="Profil" />
           <AvatarFallback className="bg-blue-100 text-sm font-semibold text-blue-700">
             {initials}
@@ -65,7 +65,10 @@ export default function UserMenu() {
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => signOut({ callbackUrl: "/auth/login" })}
+          onClick={async () => {
+            await fetch("/api/privacy-advanced/key", { method: "DELETE" }).catch(() => undefined);
+            signOut({ callbackUrl: "/?auth=login" });
+          }}
           className="cursor-pointer text-red-600 focus:text-red-600"
         >
           <LogOut className="mr-2 h-4 w-4" />

@@ -39,6 +39,7 @@ function CertificateActions({
         text={cert.text}
         studentName={cert.name}
         certificateId={cert.id}
+        compact
       />
       <ActionButton label="Löschen" onClick={handleDelete} variant="danger" />
     </div>
@@ -83,7 +84,7 @@ function ClassNameCell({
           <Input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="h-8 w-20 text-xs"
+            className="h-8 w-24 text-xs"
             placeholder="5a"
           />
           <ActionButton label={saving ? "…" : "OK"} onClick={save} variant="ghost" />
@@ -138,7 +139,7 @@ export default function TableRow({ cert, classOrganizationEnabled, onClassUpdate
         className="hidden border-b border-slate-100 transition-colors hover:bg-slate-50/80 md:table-row cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        <td className="max-w-[120px] truncate py-3 px-3 font-medium">{cert.name}</td>
+        <td className="max-w-[160px] truncate py-3 px-3 font-medium">{cert.name}</td>
         {classOrganizationEnabled && (
           <td className="whitespace-nowrap py-3 px-3">
             <ClassNameCell cert={cert} onClassUpdated={onClassUpdated} />
@@ -149,7 +150,7 @@ export default function TableRow({ cert, classOrganizationEnabled, onClassUpdate
         <td className="whitespace-nowrap py-3 px-3 text-slate-600">{cert.grade ?? "–"}</td>
         <td className="whitespace-nowrap py-3 px-3 text-slate-500">{formatDate(cert.createdAt)}</td>
         <td className="whitespace-nowrap py-3 px-3 text-slate-600">{cert.wordCount}</td>
-        <td className="py-3 px-3">
+        <td className="py-3 px-3 align-top">
           <CertificateActions cert={cert} onDelete={handleDelete} />
         </td>
       </tr>

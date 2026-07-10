@@ -13,6 +13,7 @@ export type MeUser = {
   emailVerified?: string;
   image?: string;
   totpEnabled?: boolean;
+  privacyAdvancedModeEnabled?: boolean;
   role?: string;
   createdAt: string;
   updatedAt: string;

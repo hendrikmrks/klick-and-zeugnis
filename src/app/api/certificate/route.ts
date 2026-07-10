@@ -9,6 +9,9 @@ import {
   sanitizeStringArray,
 } from "@/lib/plan-limits";
 import { NextResponse } from "next/server";
+import { getKeySession, addMappingToSession } from "@/lib/privacy-advanced/key-session";
+import { resolveCertificates } from "@/lib/privacy-advanced/resolve";
+import { generatePrivacyPlaceholder, replaceNameInText } from "@/lib/privacy-advanced/placeholder";
 
 export async function GET(req: Request) {
   const session = await getAuthSession();
@@ -19,7 +22,12 @@ export async function GET(req: Request) {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, subscriptionLevel: true, subscriptionExpiresAt: true },
+    select: {
+      id: true,
+      subscriptionLevel: true,
+      subscriptionExpiresAt: true,
+      privacyAdvancedModeEnabled: true,
+    },
   });
 
   if (!dbUser) {
@@ -47,10 +55,18 @@ export async function GET(req: Request) {
     orderBy: [{ className: "asc" }, { name: "asc" }, { createdAt: "desc" }],
   });
 
+  const keySession = getKeySession(dbUser.id);
+  const resolvedCertificates = keySession
+    ? resolveCertificates(certificates, keySession.mappings)
+    : certificates;
+
   return NextResponse.json({
-    certificates,
+    certificates: resolvedCertificates,
     classOrganizationEnabled: hasClassOrganization(effectiveLevel),
     saveLimit,
+    privacyAdvancedModeEnabled: dbUser.privacyAdvancedModeEnabled,
+    keyLoaded: Boolean(keySession),
+    keyExpiresAt: keySession?.expiresAt ?? null,
   });
 }
 
@@ -70,7 +86,12 @@ export async function POST(req: Request) {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, subscriptionLevel: true, subscriptionExpiresAt: true },
+    select: {
+      id: true,
+      subscriptionLevel: true,
+      subscriptionExpiresAt: true,
+      privacyAdvancedModeEnabled: true,
+    },
   });
 
   if (!dbUser) {
@@ -168,6 +189,21 @@ export async function POST(req: Request) {
   const normalizedSkills = sanitizeStringArray(socialSkills, limits.maxSkills, limits.itemMaxLength);
   const normalizedRoles = sanitizeStringArray(roles, limits.maxRoles, limits.itemMaxLength);
 
+  const realName = name.trim().slice(0, limits.nameMaxLength);
+  let storedName = realName;
+  let storedText = text;
+  let isPrivacyProtected = false;
+  let privacyMapping: { placeholder: string; realName: string } | undefined;
+
+  if (dbUser.privacyAdvancedModeEnabled) {
+    const placeholder = generatePrivacyPlaceholder();
+    storedName = placeholder;
+    storedText = replaceNameInText(text, realName, placeholder);
+    isPrivacyProtected = true;
+    privacyMapping = { placeholder, realName };
+    addMappingToSession(dbUser.id, placeholder, realName);
+  }
+
   const savedCertificate = await prisma.$transaction(async (tx) => {
     const currentSaved = await tx.certificate.count({
       where: { userId: dbUser.id },
@@ -190,15 +226,16 @@ export async function POST(req: Request) {
     const cert = await tx.certificate.create({
       data: {
         userId: dbUser.id,
-        name: name.trim().slice(0, limits.nameMaxLength),
+        name: storedName,
         gender: gender.trim().slice(0, limits.genderMaxLength),
-        text,
+        text: storedText,
         grade: typeof grade === "string" ? grade.trim().slice(0, limits.gradeMaxLength) : null,
         className: normalizedClassName,
         schoolYear: schoolYear.trim(),
         socialSkills: normalizedSkills,
         roles: normalizedRoles,
         wordCount,
+        isPrivacyProtected,
       },
     });
 
@@ -227,7 +264,12 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ certificate: savedCertificate });
+  return NextResponse.json({
+    certificate: savedCertificate,
+    privacyMapping,
+    privacyAdvancedModeEnabled: dbUser.privacyAdvancedModeEnabled,
+    keyLoaded: Boolean(getKeySession(dbUser.id)),
+  });
 }
 
 export async function DELETE(req: Request) {

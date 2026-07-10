@@ -43,7 +43,7 @@ export default function GenerateCertificate(props: GenerateCertificateProps) {
       <RolesSection roles={props.roles} setRoles={props.setRoles} />
       <Button
         type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700"
+        className="w-full"
         disabled={props.loading}
       >
         {props.loading ? (

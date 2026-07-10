@@ -42,7 +42,7 @@ export default function SocialSkillsSection({
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-100"
+        className="flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 text-left text-sm transition-colors hover:bg-slate-100"
       >
         <span className="font-medium text-slate-900">Sozialverhalten</span>
         <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform", expanded && "rotate-180")} />

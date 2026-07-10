@@ -11,7 +11,7 @@ export default function Card({ children, title, className }: CardProps) {
   return (
     <div
       className={cn(
-        "flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6",
+        "flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6",
         className
       )}
     >

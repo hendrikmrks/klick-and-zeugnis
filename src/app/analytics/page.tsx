@@ -10,6 +10,8 @@ import type { UsageData } from "@/types/app";
 import Link from "next/link";
 import { BarChart3, FileText, Sparkles, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Alert from "@/components/layout/Alert";
+import SectionCard from "@/components/layout/SectionCard";
 
 function StatCard({
   icon: Icon,
@@ -37,7 +39,7 @@ function StatCard({
         <Icon className="h-5 w-5" />
       </div>
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
       {hint && <p className="mt-2 text-xs text-slate-500">{hint}</p>}
     </div>
   );
@@ -69,16 +71,29 @@ export default function AnalyticsPage() {
       .finally(() => setLoadingUsage(false));
   }, [isAuthenticated]);
 
-  if (isLoading || !isAuthenticated || !user) return <LoadingState label="Statistiken werden geladen…" />;
-  if (loadingUsage) return <LoadingState label="Statistiken werden geladen…" />;
+  if (isLoading || !isAuthenticated || !user || loadingUsage) {
+    return <LoadingState label="Statistiken werden geladen…" />;
+  }
+
   if (usageError) {
     return (
       <PageContainer>
-        <p className="p-8 text-center text-red-600">{usageError}</p>
+        <PageHeader title="Analysen" />
+        <Alert variant="error">{usageError}</Alert>
       </PageContainer>
     );
   }
-  if (!usage) return <p className="p-8 text-center text-slate-600">Keine Daten verfügbar</p>;
+
+  if (!usage) {
+    return (
+      <PageContainer>
+        <PageHeader title="Analysen" />
+        <SectionCard>
+          <p className="text-center text-slate-600">Keine Daten verfügbar.</p>
+        </SectionCard>
+      </PageContainer>
+    );
+  }
 
   const planLabel = usage.subscriptionLevel ?? user.subscriptionLevel ?? "Free";
 
@@ -88,7 +103,7 @@ export default function AnalyticsPage() {
         title="Analysen"
         description={`Überblick über deine Nutzung im ${planLabel}-Tarif.`}
       >
-        <Button variant="outline" asChild>
+        <Button variant="outline" size="sm" asChild>
           <Link href="/subscription">Tarif upgraden</Link>
         </Button>
       </PageHeader>
@@ -125,29 +140,24 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Monatslimit Generierung</h2>
-          <p className="mt-1 text-sm text-slate-500">Verbrauch deines aktuellen Abos</p>
-          <div className="mt-6">
-            <UsageProgress
-              label="Generiert"
-              value={usage.monthGenerated}
-              max={usage.monthLimit}
-            />
-          </div>
-        </section>
+        <SectionCard
+          title="Monatslimit Generierung"
+          description="Verbrauch deines aktuellen Abos"
+        >
+          <UsageProgress
+            label="Generiert"
+            value={usage.monthGenerated}
+            max={usage.monthLimit}
+          />
+        </SectionCard>
 
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Speicherlimit</h2>
-          <p className="mt-1 text-sm text-slate-500">Gespeicherte Zeugnisse in deinem Tarif</p>
-          <div className="mt-6">
-            <UsageProgress
-              label="Gespeichert"
-              value={usage.totalSaved}
-              max={usage.saveLimit}
-            />
-          </div>
-        </section>
+        <SectionCard title="Speicherlimit" description="Gespeicherte Zeugnisse in deinem Tarif">
+          <UsageProgress
+            label="Gespeichert"
+            value={usage.totalSaved}
+            max={usage.saveLimit}
+          />
+        </SectionCard>
       </div>
     </PageContainer>
   );

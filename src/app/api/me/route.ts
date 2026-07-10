@@ -23,6 +23,7 @@ export async function GET() {
       emailVerified: true,
       image: true,
       totpEnabled: true,
+      privacyAdvancedModeEnabled: true,
       role: true,
       createdAt: true,
       updatedAt: true,

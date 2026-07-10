@@ -14,7 +14,8 @@ import { useRouter } from "next/navigation";
 import type { UsageData } from "@/types/app";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import Alert from "@/components/layout/Alert";
+import { PrivacyAdvancedKeyUploadPanel } from "@/components/settings/PrivacyAdvancedSection";
 import { getCurrentSchoolYear } from "@/lib/schoolYear";
 import { hasClassOrganization } from "@/lib/subscription";
 
@@ -54,6 +55,8 @@ export default function DashboardPage() {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [keyFilePrompt, setKeyFilePrompt] = useState<string | null>(null);
+  const [pendingMapping, setPendingMapping] = useState<{ placeholder: string; realName: string } | null>(null);
 
   const handleUsage = useCallback((data: UsageData) => {
     setUsage(data);
@@ -133,6 +136,19 @@ export default function DashboardPage() {
       setSaveSuccess(true);
       clearCertificate();
       setUsageKey((k) => k + 1);
+
+      if (data.privacyMapping && user.privacyAdvancedModeEnabled) {
+        if (data.keyLoaded) {
+          setKeyFilePrompt(
+            "Zeugnis mit Namensplatzhalter gespeichert. Exportiere die aktualisierte Schlüsseldatei, um die neue Zuordnung dauerhaft zu sichern."
+          );
+        } else {
+          setPendingMapping(data.privacyMapping);
+          setKeyFilePrompt(
+            "Zeugnis mit Namensplatzhalter gespeichert. Lade deine Schlüsseldatei hoch, um die neue Zuordnung zu übernehmen."
+          );
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Speichern fehlgeschlagen.";
       setSaveError(message);
@@ -149,32 +165,32 @@ export default function DashboardPage() {
       </PageHeader>
 
       {error === "LIMIT_REACHED" && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-medium text-amber-900">Monatslimit erreicht</p>
-            <p className="mt-1 text-sm text-amber-800">
-              Upgrade dein Abo für mehr Zeugnisse.{" "}
-              <Link href="/subscription" className="font-medium underline">Tarife ansehen</Link>
-            </p>
-          </div>
-        </div>
+        <Alert variant="warning" title="Monatslimit erreicht">
+          Upgrade dein Abo für mehr Zeugnisse.{" "}
+          <Link href="/subscription" className="font-medium underline">
+            Tarife ansehen
+          </Link>
+        </Alert>
       )}
 
-      {saveError && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {saveError}
-        </div>
+      {saveError && <Alert variant="error">{saveError}</Alert>}
+
+      {saveSuccess && <Alert variant="success">Zeugnis erfolgreich gespeichert.</Alert>}
+
+      {keyFilePrompt && (
+        <Alert variant="info" title="Schlüsseldatei aktualisieren">
+          {keyFilePrompt} Die Zuordnung wurde zur Server-Sitzung hinzugefügt, falls deine
+          Schlüsseldatei geladen ist. Lade die aktualisierte Schlüsseldatei in den Einstellungen
+          herunter oder exportiere sie nach dem nächsten Upload.
+        </Alert>
       )}
 
-      {saveSuccess && (
-        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Zeugnis erfolgreich gespeichert.
-        </div>
+      {user.privacyAdvancedModeEnabled && (
+        <PrivacyAdvancedKeyUploadPanel pendingMapping={pendingMapping} onUploaded={() => setPendingMapping(null)} />
       )}
 
-      <div className="grid items-start gap-6 xl:grid-cols-12">
-        <Card title="Zeugnis erstellen" className="xl:col-span-4">
+      <div className="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-12">
+        <Card title="Zeugnis erstellen" className="lg:col-span-1 xl:col-span-4">
           <GenerateCertificate
             handleSubmit={handleSubmit}
             name={name} setName={setName}
@@ -187,7 +203,7 @@ export default function DashboardPage() {
           />
         </Card>
 
-        <Card title="Vorschau" className="xl:col-span-5">
+        <Card title="Vorschau" className="lg:col-span-1 xl:col-span-5">
           <CertificateViewer
             content={certificate ?? ""}
             placeholder="Generiere links ein neues Zeugnis – der Text erscheint hier."
@@ -201,7 +217,7 @@ export default function DashboardPage() {
           />
         </Card>
 
-        <Card title="Nutzung" className="xl:col-span-3">
+        <Card title="Nutzung" className="lg:col-span-2 xl:col-span-3">
           <UsageSummary key={usageKey} onUsage={handleUsage} />
         </Card>
       </div>

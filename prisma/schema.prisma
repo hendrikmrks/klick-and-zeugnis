@@ -44,6 +44,7 @@ model User {
   passwordHash          String?
   totpSecret            String?
   totpEnabled           Boolean           @default(false)
+  privacyAdvancedModeEnabled Boolean      @default(false)
   role                  UserRole          @default(User)
   accounts              Account[]
   sessions              Session[]
@@ -137,6 +138,7 @@ model Certificate {
   socialSkills  String[] // als Array gespeichert
   roles         String[] // als Array gespeichert
   wordCount     Int
+  isPrivacyProtected Boolean @default(false)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

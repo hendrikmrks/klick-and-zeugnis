@@ -9,7 +9,8 @@ import PlansGrid from "@/components/subscription/PlansGrid";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { isDowngrade, isUpgrade } from "@/lib/subscription";
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
+import Alert from "@/components/layout/Alert";
+import SectionCard from "@/components/layout/SectionCard";
 
 type SubRequest = {
   id: string;
@@ -117,28 +118,15 @@ export default function SubscriptionPage() {
       <CurrentPlan plan={currentPlan} pendingRequest={pendingRequest} />
 
       {hasPendingUpgrade && pendingRequest && (
-        <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-medium text-amber-900">
-              Upgrade auf {pendingRequest.requestedLevel} wartet auf Freigabe
-            </p>
-            <p className="mt-1 text-sm text-amber-800">
-              Deine Anfrage wird von einem Administrator geprüft. Bis dahin bleibst du im {currentPlan}-Tarif.
-            </p>
-          </div>
-        </div>
+        <Alert variant="warning" title={`Upgrade auf ${pendingRequest.requestedLevel} wartet auf Freigabe`}>
+          Deine Anfrage wird von einem Administrator geprüft. Bis dahin bleibst du im {currentPlan}-Tarif.
+        </Alert>
       )}
 
-      {message && (
-        <p className="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">{message}</p>
-      )}
-      {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
-      )}
+      {message && <Alert variant="success">{message}</Alert>}
+      {error && <Alert variant="error">{error}</Alert>}
 
-      <div className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Verfügbare Tarife</h2>
+      <SectionCard title="Verfügbare Tarife" className="mt-8">
         <PlansGrid
           currentPlan={currentPlan}
           onPlanAction={handlePlanAction}
@@ -146,11 +134,10 @@ export default function SubscriptionPage() {
           pendingRequest={pendingRequest}
           hasPendingUpgrade={hasPendingUpgrade}
         />
-      </div>
+      </SectionCard>
 
       {requests.length > 0 && (
-        <section className="mt-10 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Anfragen-Historie</h2>
+        <SectionCard title="Anfragen-Historie" className="mt-10">
           <ul className="space-y-3">
             {requests.map((req) => (
               <li key={req.id} className="rounded-xl border border-slate-100 p-4 text-sm">
@@ -181,7 +168,7 @@ export default function SubscriptionPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       )}
     </PageContainer>
   );

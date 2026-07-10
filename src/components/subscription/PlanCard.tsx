@@ -86,8 +86,7 @@ export default function PlanCard({
         className={cn(
           "mt-6 w-full",
           isWaiting && "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-50",
-          !isCurrent && !isWaiting && !disabled && isDowngrade && "border-slate-300",
-          !isCurrent && !isWaiting && !disabled && isUpgrade && "bg-blue-600 hover:bg-blue-700"
+          !isCurrent && !isWaiting && !disabled && isDowngrade && "border-slate-300"
         )}
         variant={isCurrent || isWaiting || isDowngrade ? "outline" : "default"}
       >
