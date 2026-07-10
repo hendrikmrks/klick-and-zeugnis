@@ -6,8 +6,10 @@ import PageHeader from "@/components/layout/PageHeader";
 import LoadingState from "@/components/layout/LoadingState";
 import CurrentPlan from "@/components/subscription/CurrentPlan";
 import PlansGrid from "@/components/subscription/PlansGrid";
+import BillingDetailsForm from "@/components/subscription/BillingDetailsForm";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { isDowngrade, isUpgrade } from "@/lib/subscription";
+import type { BillingDetails } from "@/lib/billing";
 import { Badge } from "@/components/ui/badge";
 import Alert from "@/components/layout/Alert";
 import SectionCard from "@/components/layout/SectionCard";
@@ -17,6 +19,12 @@ type SubRequest = {
   requestedLevel: string;
   status: string;
   adminNote: string | null;
+  billingEmail: string | null;
+  billingName: string | null;
+  billingStreet: string | null;
+  billingZip: string | null;
+  billingCity: string | null;
+  billingCountry: string | null;
   createdAt: string;
 };
 
@@ -25,6 +33,7 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState("Free");
   const [requests, setRequests] = useState<SubRequest[]>([]);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [billingPlan, setBillingPlan] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -87,29 +96,46 @@ export default function SubscriptionPage() {
         return;
       }
 
-      setProcessingPlan(plan);
-      const res = await fetch("/api/subscription/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestedLevel: plan }),
-      });
-      const data = await res.json();
-      setProcessingPlan(null);
-
-      if (!res.ok) {
-        setError(data.error ?? "Anfrage fehlgeschlagen.");
-        return;
-      }
-
-      setMessage(`Deine Anfrage für den ${plan}-Tarif wurde eingereicht.`);
-      await loadRequests();
+      setBillingPlan(plan);
     }
+  };
+
+  const submitUpgradeRequest = async (plan: string, billing: BillingDetails) => {
+    setProcessingPlan(plan);
+    setError("");
+
+    const res = await fetch("/api/subscription/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestedLevel: plan, ...billing }),
+    });
+    const data = await res.json();
+    setProcessingPlan(null);
+
+    if (!res.ok) {
+      setError(data.error ?? "Anfrage fehlgeschlagen.");
+      return;
+    }
+
+    setBillingPlan(null);
+    setMessage(`Deine Anfrage für den ${plan}-Tarif wurde eingereicht.`);
+    await loadRequests();
   };
 
   if (isLoading || !isAuthenticated || !user) return <LoadingState />;
 
   return (
     <PageContainer>
+      {billingPlan && (
+        <BillingDetailsForm
+          planName={billingPlan}
+          defaultEmail={user.email}
+          loading={processingPlan === billingPlan}
+          onCancel={() => setBillingPlan(null)}
+          onSubmit={(billing) => submitUpgradeRequest(billingPlan, billing)}
+        />
+      )}
+
       <PageHeader
         title="Abonnement"
         description="In höhere Tarife per Anfrage – in niedrigere Tarife jederzeit direkt wechseln."

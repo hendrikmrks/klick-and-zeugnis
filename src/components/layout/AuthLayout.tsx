@@ -63,6 +63,7 @@ export default function AuthLayout({ children, title, subtitle }: Props) {
           <Link href="/impressum" className="hover:text-slate-300">Impressum</Link>
           <Link href="/datenschutz" className="hover:text-slate-300">Datenschutz</Link>
           <Link href="/agb" className="hover:text-slate-300">AGB</Link>
+          <Link href="/widerruf" className="hover:text-slate-300">Widerruf</Link>
         </nav>
       </footer>
     </div>

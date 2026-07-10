@@ -15,6 +15,9 @@ export default function Footer() {
           <Link href="/agb" className="hover:text-slate-900 hover:underline">
             AGB
           </Link>
+          <Link href="/widerruf" className="hover:text-slate-900 hover:underline">
+            Widerruf
+          </Link>
         </nav>
       </div>
     </footer>

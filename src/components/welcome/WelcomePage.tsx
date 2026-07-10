@@ -211,6 +211,9 @@ export default function WelcomePage() {
           <Link href="/agb" className="hover:text-slate-300">
             AGB
           </Link>
+          <Link href="/widerruf" className="hover:text-slate-300">
+            Widerruf
+          </Link>
         </nav>
       </footer>
     </div>

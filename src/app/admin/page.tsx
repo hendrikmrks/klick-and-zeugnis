@@ -28,6 +28,12 @@ type SubRequest = {
   message: string | null;
   status: string;
   adminNote: string | null;
+  billingEmail: string | null;
+  billingName: string | null;
+  billingStreet: string | null;
+  billingZip: string | null;
+  billingCity: string | null;
+  billingCountry: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -238,6 +244,13 @@ export default function AdminPage() {
                       {" → "}
                       <span className="font-medium text-blue-700">{req.requestedLevel}</span>
                     </p>
+                {req.billingEmail && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    Rechnung an: {req.billingName}, {req.billingStreet},{" "}
+                    {req.billingZip} {req.billingCity}, {req.billingCountry ?? "Deutschland"}{" "}
+                    ({req.billingEmail})
+                  </p>
+                )}
                     {req.message && (
                       <p className="mt-2 text-sm text-slate-600">Nachricht: {req.message}</p>
                     )}

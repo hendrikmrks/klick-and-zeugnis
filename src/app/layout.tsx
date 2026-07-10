@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 const authPaths = ["/auth/login", "/auth/register"];
-const legalPaths = ["/impressum", "/datenschutz", "/agb"];
+const legalPaths = ["/impressum", "/datenschutz", "/agb", "/widerruf"];
 const barePaths = ["/", ...authPaths];
 
 export default function RootLayout({

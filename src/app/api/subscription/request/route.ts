@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-auth";
+import { parseBillingDetails } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionLevel, isUpgrade } from "@/lib/subscription";
 
@@ -26,6 +27,16 @@ export async function POST(req: Request) {
   if (!requestedLevel || !isSubscriptionLevel(requestedLevel)) {
     return NextResponse.json({ error: "Ungültiger Tarif." }, { status: 400 });
   }
+
+  const billingResult = parseBillingDetails(body);
+  if (billingResult.error || !billingResult.data) {
+    return NextResponse.json(
+      { error: billingResult.error ?? "Rechnungsdaten sind erforderlich." },
+      { status: 400 }
+    );
+  }
+
+  const billing = billingResult.data;
 
   const currentLevel = result.user.effectiveSubscriptionLevel;
 
@@ -55,6 +66,12 @@ export async function POST(req: Request) {
     data: {
       userId: result.user.id,
       requestedLevel,
+      billingEmail: billing.billingEmail,
+      billingName: billing.billingName,
+      billingStreet: billing.billingStreet,
+      billingZip: billing.billingZip,
+      billingCity: billing.billingCity,
+      billingCountry: billing.billingCountry,
       message: typeof message === "string" ? message.trim() || null : null,
     },
   });
