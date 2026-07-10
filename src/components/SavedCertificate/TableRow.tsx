@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CertificateRecord } from "@/types/app";
 import ActionButton from "./ActionButton";
 import ReportCertificateButton from "@/components/certificate/ReportCertificateButton";
+import { downloadCertificatePdf } from "@/lib/export-certificate-pdf";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -25,6 +26,23 @@ function CertificateActions({
     navigator.clipboard.writeText(cert.text);
   };
 
+  const handlePdfExport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await downloadCertificatePdf({
+        studentName: cert.name,
+        text: cert.text,
+        grade: cert.grade,
+        schoolYear: cert.schoolYear,
+        className: cert.className,
+        gender: cert.gender,
+        createdAt: cert.createdAt,
+      });
+    } catch {
+      alert("PDF-Export fehlgeschlagen.");
+    }
+  };
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Möchtest du das Zeugnis von ${cert.name} wirklich löschen?`)) {
@@ -35,6 +53,7 @@ function CertificateActions({
   return (
     <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
       <ActionButton label="Kopieren" onClick={handleCopy} variant="ghost" />
+      <ActionButton label="PDF" onClick={handlePdfExport} variant="ghost" />
       <ReportCertificateButton
         text={cert.text}
         studentName={cert.name}

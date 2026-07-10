@@ -3,8 +3,10 @@
 import SocialSkillsSection from "./SocialSkillsSection";
 import RolesSection from "./RolesSection";
 import CertificateDetailsSection from "./CertificateDetailsSection";
+import StylePresetSelector from "./StylePresetSelector";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import type { CertificateStyle } from "@/lib/certificate-style";
 
 type GenerateCertificateProps = {
   handleSubmit: (e: React.FormEvent) => void;
@@ -20,6 +22,8 @@ type GenerateCertificateProps = {
   setRoles: (roles: Record<string, boolean>) => void;
   socialSkills: Record<string, number>;
   setSocialSkills: (skills: Record<string, number>) => void;
+  style: CertificateStyle;
+  onStyleChange: (style: CertificateStyle) => void;
   loading: boolean;
 };
 
@@ -41,6 +45,11 @@ export default function GenerateCertificate(props: GenerateCertificateProps) {
         setSocialSkills={props.setSocialSkills}
       />
       <RolesSection roles={props.roles} setRoles={props.setRoles} />
+      <StylePresetSelector
+        value={props.style}
+        onChange={props.onStyleChange}
+        disabled={props.loading}
+      />
       <Button
         type="submit"
         className="w-full"

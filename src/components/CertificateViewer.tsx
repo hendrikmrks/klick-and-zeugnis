@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Copy, RotateCcw, Save } from "lucide-react";
+import StylePresetSelector from "@/components/certificate/StylePresetSelector";
+import type { CertificateStyle } from "@/lib/certificate-style";
+import { Copy, RefreshCw, RotateCcw, Save } from "lucide-react";
 import ReportCertificateButton from "@/components/certificate/ReportCertificateButton";
 import ClassNameSelector, { ClassOrganizationUpsell } from "@/components/certificate/ClassNameSelector";
 
@@ -8,7 +10,12 @@ type Props = {
   placeholder?: string;
   onClear: () => void;
   onSave: () => void;
+  onRegenerate?: () => void;
   canSave?: boolean;
+  canRegenerate?: boolean;
+  regenerating?: boolean;
+  style?: CertificateStyle;
+  onStyleChange?: (style: CertificateStyle) => void;
   studentName?: string;
   canUseClasses?: boolean;
   className?: string;
@@ -20,7 +27,12 @@ export default function CertificateViewer({
   placeholder,
   onClear,
   onSave,
+  onRegenerate,
   canSave,
+  canRegenerate,
+  regenerating,
+  style = "default",
+  onStyleChange,
   studentName,
   canUseClasses,
   className = "",
@@ -50,6 +62,31 @@ export default function CertificateViewer({
         <ClassNameSelector value={className} onChange={onClassNameChange} />
       ) : (
         !canUseClasses && canSave && <ClassOrganizationUpsell />
+      )}
+
+      {!isEmpty && onStyleChange && onRegenerate && (
+        <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+          <StylePresetSelector
+            value={style}
+            onChange={onStyleChange}
+            disabled={regenerating}
+            compact
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRegenerate}
+            disabled={!canRegenerate || regenerating}
+            className="w-full"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${regenerating ? "animate-spin" : ""}`} />
+            {regenerating ? "Wird neu generiert…" : "Neu generieren"}
+          </Button>
+          <p className="text-xs text-slate-500">
+            Verbraucht erneut ein Zeugnis aus deinem Monatslimit.
+          </p>
+        </div>
       )}
 
       <div className="space-y-2">

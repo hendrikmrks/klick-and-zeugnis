@@ -18,6 +18,7 @@ import Alert from "@/components/layout/Alert";
 import { PrivacyAdvancedKeyUploadPanel } from "@/components/settings/PrivacyAdvancedSection";
 import { getCurrentSchoolYear } from "@/lib/schoolYear";
 import { hasClassOrganization } from "@/lib/subscription";
+import type { CertificateStyle } from "@/lib/certificate-style";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [keyFilePrompt, setKeyFilePrompt] = useState<string | null>(null);
   const [pendingMapping, setPendingMapping] = useState<{ placeholder: string; realName: string } | null>(null);
+  const [style, setStyle] = useState<CertificateStyle>("default");
 
   const handleUsage = useCallback((data: UsageData) => {
     setUsage(data);
@@ -82,22 +84,39 @@ export default function DashboardPage() {
     router.push("/subscription");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runGenerate = async (selectedStyle: CertificateStyle = style) => {
     setSaveError(null);
     setSaveSuccess(false);
     if (usage && usage.monthGenerated >= usage.monthLimit) {
       handleLimit();
-      return;
+      return null;
     }
     const selectedSocialSkills = Object.entries(socialSkills).map(([skill, level]) => `${skill}: ${level}`);
     const selectedRoles = Object.entries(roles).filter(([, active]) => active).map(([role]) => role);
     const result = await generateCertificate({
-      name, gender, grade,
+      name,
+      gender,
+      grade,
       socialSkills: selectedSocialSkills,
       roles: selectedRoles,
+      style: selectedStyle,
     });
     if (result) setUsageKey((k) => k + 1);
+    return result;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runGenerate();
+  };
+
+  const handleRegenerate = async () => {
+    if (!certificate) return;
+    const confirmed = window.confirm(
+      "Möchtest du den Zeugnistext neu generieren?\n\nDies verbraucht erneut ein Zeugnis aus deinem Monatslimit."
+    );
+    if (!confirmed) return;
+    await runGenerate(style);
   };
 
   const handleSave = async () => {
@@ -199,6 +218,8 @@ export default function DashboardPage() {
             schoolYear={schoolYear} setSchoolYear={setSchoolYear}
             roles={roles} setRoles={setRoles}
             socialSkills={socialSkills} setSocialSkills={setSocialSkills}
+            style={style}
+            onStyleChange={setStyle}
             loading={loading}
           />
         </Card>
@@ -209,6 +230,11 @@ export default function DashboardPage() {
             placeholder="Generiere links ein neues Zeugnis – der Text erscheint hier."
             onClear={handleClear}
             onSave={handleSave}
+            onRegenerate={handleRegenerate}
+            canRegenerate={Boolean(certificate) && !(usage && usage.monthGenerated >= usage.monthLimit)}
+            regenerating={loading && Boolean(certificate)}
+            style={style}
+            onStyleChange={setStyle}
             canSave={Boolean(certificate && generatedId)}
             studentName={name}
             canUseClasses={canUseClasses}

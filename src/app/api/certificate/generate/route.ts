@@ -9,6 +9,13 @@ import {
   type OpenAiUsageRecord,
 } from "@/lib/openai-usage";
 import {
+  applyMockStyleVariant,
+  getStyleSystemPrompt,
+  getStyleUserInstruction,
+  parseCertificateStyle,
+  type CertificateStyle,
+} from "@/lib/certificate-style";
+import {
   countWords,
   GENERATE_INPUT_LIMITS,
   getMonthStart,
@@ -36,11 +43,13 @@ async function generateCertificateText(
   gender: string,
   grade: string,
   socialSkills: string[],
-  roles: string[]
+  roles: string[],
+  style: CertificateStyle
 ): Promise<{ text: string; usage: OpenAiUsageRecord | null }> {
   if (!hasOpenAiKey()) {
+    const mockText = buildMockCertificateText(name, gender, grade, socialSkills, roles);
     return {
-      text: buildMockCertificateText(name, gender, grade, socialSkills, roles),
+      text: applyMockStyleVariant(mockText, style),
       usage: null,
     };
   }
@@ -52,7 +61,7 @@ async function generateCertificateText(
       Klasse: ${grade}
       Sozialverhalten: ${JSON.stringify(socialSkills)}
       Rollen: ${JSON.stringify(roles)}
-      Bitte generiere ein Zeugnis basierend auf diesen Angaben.
+      ${getStyleUserInstruction(style)}
     `;
 
   const completion = await openai.chat.completions.create({
@@ -60,14 +69,14 @@ async function generateCertificateText(
     messages: [
       {
         role: "system",
-        content: "Du bist ein Lehrer, der Schulzeugnistexte schreibt.",
+        content: getStyleSystemPrompt(style),
       },
       { role: "user", content: prompt },
     ],
     max_tokens: 500,
   });
 
-  const text =
+  const rawText =
     completion.choices[0].message.content ??
     buildMockCertificateText(name, gender, grade, socialSkills, roles);
 
@@ -79,7 +88,7 @@ async function generateCertificateText(
       )
     : null;
 
-  return { text, usage };
+  return { text: rawText, usage };
 }
 
 function parseGenerateInput(body: unknown) {
@@ -87,7 +96,7 @@ function parseGenerateInput(body: unknown) {
     return { error: "Ungültige Anfrage." };
   }
 
-  const { name, gender, grade, socialSkills, roles } = body as Record<string, unknown>;
+  const { name, gender, grade, socialSkills, roles, style } = body as Record<string, unknown>;
 
   if (typeof name !== "string" || !name.trim()) {
     return { error: "Name ist erforderlich." };
@@ -107,6 +116,7 @@ function parseGenerateInput(body: unknown) {
       grade: grade.trim().slice(0, limits.gradeMaxLength),
       socialSkills: sanitizeStringArray(socialSkills, limits.maxSkills, limits.itemMaxLength),
       roles: sanitizeStringArray(roles, limits.maxRoles, limits.itemMaxLength),
+      style: parseCertificateStyle(style),
     },
   };
 }
@@ -125,7 +135,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const { name, gender, grade, socialSkills, roles } = parsed.data;
+    const { name, gender, grade, socialSkills, roles, style } = parsed.data;
 
     const dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -172,7 +182,8 @@ export async function POST(req: Request) {
         gender,
         grade,
         socialSkills,
-        roles
+        roles,
+        style
       );
       const wordCount = countWords(certificateText);
 

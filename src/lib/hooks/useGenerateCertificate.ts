@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState } from "react";
+import type { CertificateStyle } from "@/lib/certificate-style";
 
 export type GenerateCertificateParams = {
   name: string;
@@ -6,6 +7,7 @@ export type GenerateCertificateParams = {
   grade: string;
   socialSkills: string[];
   roles: string[];
+  style?: CertificateStyle;
 };
 
 export type GenerateCertificateResult = {
@@ -25,14 +27,14 @@ export function useGenerateCertificate() {
     setGeneratedId(null);
 
     try {
-      const res = await fetch('/api/certificate/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/certificate/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
       });
 
       if (res.status === 403) {
-        setError('LIMIT_REACHED');
+        setError("LIMIT_REACHED");
         setLoading(false);
         return null;
       }
@@ -46,11 +48,11 @@ export function useGenerateCertificate() {
       setCertificate(cert);
       setGeneratedId(id);
       if (!cert || !id) {
-        throw new Error('Ungültige Antwort vom Server');
+        throw new Error("Ungültige Antwort vom Server");
       }
       return { text: cert, generatedId: id } satisfies GenerateCertificateResult;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unbekannter Fehler';
+      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
       setError(message);
       setCertificate(null);
       setGeneratedId(null);
