@@ -78,7 +78,8 @@ jobs:
             docker network create klick-proxy
           fi
           cd "${{ env.DEPLOY_ROOT }}/traefik"
-          docker compose -p klick-proxy-stack up -d
+          docker compose -p klick-proxy-stack pull
+          docker compose -p klick-proxy-stack up -d --force-recreate
 
       - name: Deploy production stack
         env:

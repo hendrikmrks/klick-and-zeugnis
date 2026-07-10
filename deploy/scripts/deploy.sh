@@ -71,8 +71,18 @@ for _ in $(seq 1 24); do
   sleep 5
 done
 
-if ! curl -sfk --resolve "test.klick-and-zeugnis.de:443:127.0.0.1" https://test.klick-and-zeugnis.de/ >/dev/null; then
-  if [[ "${ENVIRONMENT}" == "test" ]]; then
+if [[ "${ENVIRONMENT}" == "test" ]]; then
+  echo "Warte auf Traefik-Routing …"
+  ROUTING_OK=false
+  for _ in $(seq 1 12); do
+    if curl -sfk --resolve "test.klick-and-zeugnis.de:443:127.0.0.1" https://test.klick-and-zeugnis.de/ >/dev/null; then
+      ROUTING_OK=true
+      break
+    fi
+    sleep 5
+  done
+
+  if [[ "${ROUTING_OK}" != "true" ]]; then
     echo "Fehler: Traefik liefert keine Antwort für test.klick-and-zeugnis.de."
     docker logs klick-traefik --tail 80 || true
     docker logs "${APP_CONTAINER}" --tail 80 || true
