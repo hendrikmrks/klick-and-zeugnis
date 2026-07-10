@@ -3,17 +3,18 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import {
+  buildUsageRecord,
+  hasOpenAiKey,
+  OPENAI_MODEL,
+  type OpenAiUsageRecord,
+} from "@/lib/openai-usage";
+import {
   countWords,
   GENERATE_INPUT_LIMITS,
   getMonthStart,
   getPlanLimitsForUser,
   sanitizeStringArray,
 } from "@/lib/plan-limits";
-
-function hasOpenAiKey(): boolean {
-  const key = process.env.OPENAI_API_KEY?.trim();
-  return Boolean(key && key !== "sk-dein-openai-api-key");
-}
 
 function buildMockCertificateText(
   name: string,
@@ -36,9 +37,12 @@ async function generateCertificateText(
   grade: string,
   socialSkills: string[],
   roles: string[]
-): Promise<string> {
+): Promise<{ text: string; usage: OpenAiUsageRecord | null }> {
   if (!hasOpenAiKey()) {
-    return buildMockCertificateText(name, gender, grade, socialSkills, roles);
+    return {
+      text: buildMockCertificateText(name, gender, grade, socialSkills, roles),
+      usage: null,
+    };
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -52,7 +56,7 @@ async function generateCertificateText(
     `;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: OPENAI_MODEL,
     messages: [
       {
         role: "system",
@@ -63,7 +67,19 @@ async function generateCertificateText(
     max_tokens: 500,
   });
 
-  return completion.choices[0].message.content ?? buildMockCertificateText(name, gender, grade, socialSkills, roles);
+  const text =
+    completion.choices[0].message.content ??
+    buildMockCertificateText(name, gender, grade, socialSkills, roles);
+
+  const usage = completion.usage
+    ? buildUsageRecord(
+        completion.model ?? OPENAI_MODEL,
+        completion.usage.prompt_tokens,
+        completion.usage.completion_tokens
+      )
+    : null;
+
+  return { text, usage };
 }
 
 function parseGenerateInput(body: unknown) {
@@ -151,12 +167,26 @@ export async function POST(req: Request) {
     }
 
     try {
-      const certificateText = await generateCertificateText(name, gender, grade, socialSkills, roles);
+      const { text: certificateText, usage } = await generateCertificateText(
+        name,
+        gender,
+        grade,
+        socialSkills,
+        roles
+      );
       const wordCount = countWords(certificateText);
 
       await prisma.generatedCertificate.update({
         where: { id: reservation.id },
-        data: { text: certificateText, wordCount },
+        data: {
+          text: certificateText,
+          wordCount,
+          openAiModel: usage?.model ?? null,
+          openAiPromptTokens: usage?.promptTokens ?? null,
+          openAiCompletionTokens: usage?.completionTokens ?? null,
+          openAiTotalTokens: usage?.totalTokens ?? null,
+          openAiCostUsd: usage?.estimatedCostUsd ?? null,
+        },
       });
 
       return NextResponse.json({

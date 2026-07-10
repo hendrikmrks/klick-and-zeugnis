@@ -147,13 +147,18 @@ model Certificate {
 }
 
 model GeneratedCertificate {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String    @db.ObjectId
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  text       String
-  wordCount  Int
-  consumedAt DateTime?
-  createdAt  DateTime  @default(now())
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId               String    @db.ObjectId
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text                 String
+  wordCount            Int
+  openAiModel          String?
+  openAiPromptTokens   Int?
+  openAiCompletionTokens Int?
+  openAiTotalTokens    Int?
+  openAiCostUsd        Float?
+  consumedAt           DateTime?
+  createdAt            DateTime  @default(now())
 
   @@map("__PREFIX__GeneratedCertificate")
 }

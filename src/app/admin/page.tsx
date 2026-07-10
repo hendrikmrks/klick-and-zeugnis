@@ -17,6 +17,9 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import OpenAiUsageSection, {
+  type OpenAiUsageData,
+} from "@/components/admin/OpenAiUsageSection";
 
 type Tab = "overview" | "subscriptions" | "users" | "reports";
 
@@ -104,16 +107,19 @@ export default function AdminPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [feedbackDraft, setFeedbackDraft] = useState<Record<string, string>>({});
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const [openAiUsage, setOpenAiUsage] = useState<OpenAiUsageData | null>(null);
+  const [openAiUsageError, setOpenAiUsageError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [statsRes, reqRes, usersRes, repRes] = await Promise.all([
+      const [statsRes, reqRes, usersRes, repRes, usageRes] = await Promise.all([
         fetch("/api/admin/stats"),
         fetch("/api/admin/subscription-requests"),
         fetch("/api/admin/users"),
         fetch("/api/admin/certificate-reports"),
+        fetch("/api/admin/openai-usage"),
       ]);
       if (!statsRes.ok || !reqRes.ok || !usersRes.ok || !repRes.ok) {
         throw new Error("Admin-Daten konnten nicht geladen werden.");
@@ -122,6 +128,14 @@ export default function AdminPage() {
       setRequests((await reqRes.json()).requests);
       setUsers((await usersRes.json()).users);
       setReports((await repRes.json()).reports);
+
+      if (usageRes.ok) {
+        setOpenAiUsage(await usageRes.json());
+        setOpenAiUsageError(null);
+      } else {
+        setOpenAiUsage(null);
+        setOpenAiUsageError("OpenAI-Nutzungsdaten konnten nicht geladen werden.");
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Laden fehlgeschlagen.";
       setLoadError(message);
@@ -212,20 +226,27 @@ export default function AdminPage() {
       {loading ? (
         <LoadingState />
       ) : tab === "overview" ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-slate-500">Offene Abo-Anfragen</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingRequests ?? 0}</p>
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-slate-500">Offene Abo-Anfragen</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingRequests ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-slate-500">Offene Zeugnis-Meldungen</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingReports ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-slate-500">Registrierte Nutzer</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.users ?? 0}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-slate-500">Offene Zeugnis-Meldungen</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingReports ?? 0}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-slate-500">Registrierte Nutzer</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.users ?? 0}</p>
-          </div>
-        </div>
+
+          <OpenAiUsageSection
+            data={openAiUsage}
+            error={openAiUsageError}
+          />
+        </>
       ) : tab === "subscriptions" ? (
         <div className="space-y-4">
           {requests.length === 0 ? (
