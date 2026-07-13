@@ -68,10 +68,16 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: klick-proxy
-      traefik.http.routers.klick-prod.rule: "Host(`klick-and-zeugnis.de`)"
+      traefik.http.routers.klick-prod.rule: "Host(`klick-and-zeugnis.de`) || Host(`www.klick-and-zeugnis.de`)"
       traefik.http.routers.klick-prod.entrypoints: websecure
       traefik.http.routers.klick-prod.tls: "true"
       traefik.http.routers.klick-prod.tls.certresolver: letsencrypt
+      traefik.http.routers.klick-prod.tls.domains[0].main: "klick-and-zeugnis.de"
+      traefik.http.routers.klick-prod.tls.domains[0].sans: "www.klick-and-zeugnis.de"
+      traefik.http.routers.klick-prod.middlewares: klick-prod-www-redirect
+      traefik.http.middlewares.klick-prod-www-redirect.redirectregex.regex: "^https://www\\.klick-and-zeugnis\\.de(/.*)?$$"
+      traefik.http.middlewares.klick-prod-www-redirect.redirectregex.replacement: "https://klick-and-zeugnis.de$${1}"
+      traefik.http.middlewares.klick-prod-www-redirect.redirectregex.permanent: "true"
       traefik.http.routers.klick-prod.service: klick-prod
       traefik.http.services.klick-prod.loadbalancer.server.port: "3000"
     healthcheck:

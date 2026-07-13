@@ -79,8 +79,16 @@ FORCE_SEED_RESET=false
 **Traefik:** `/opt/klick-and-zeugnis/traefik/.env`
 
 ```env
-ACME_EMAIL=admin@klick-and-zeugnis.de
+ACME_EMAIL=kontakt@klick-and-zeugnis.de
 ```
+
+Traefik holt automatisch **Let's Encrypt**-Zertifikate per HTTP-Challenge (Port 80 muss erreichbar sein).
+
+**DNS für Produktion:**
+- `klick-and-zeugnis.de` → Server-IP (A-Record)
+- `www.klick-and-zeugnis.de` → Server-IP (A-Record oder CNAME auf Apex)
+
+Nach dem ersten Prod-Deploy kann die Zertifikatsausstellung bis zu 2 Minuten dauern.
 
 > `NEXTAUTH_SECRET` muss pro Umgebung unterschiedlich sein. Test und Produktion dürfen nicht denselben Secret teilen.
 

@@ -23,7 +23,7 @@ echo "==> Erstelle Docker-Netzwerk für Reverse Proxy"
 docker network inspect klick-proxy >/dev/null 2>&1 || docker network create klick-proxy
 
 if [[ ! -f "${DEPLOY_ROOT}/traefik/.env" ]]; then
-  echo "ACME_EMAIL=admin@klick-and-zeugnis.de" > "${DEPLOY_ROOT}/traefik/.env"
+  echo "ACME_EMAIL=kontakt@klick-and-zeugnis.de" > "${DEPLOY_ROOT}/traefik/.env"
   echo "Bitte ${DEPLOY_ROOT}/traefik/.env anpassen (ACME_EMAIL)."
 fi
 

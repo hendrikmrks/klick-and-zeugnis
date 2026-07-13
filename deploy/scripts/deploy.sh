@@ -91,5 +91,29 @@ if [[ "${ENVIRONMENT}" == "test" ]]; then
   fi
 fi
 
+if [[ "${ENVIRONMENT}" == "prod" ]]; then
+  echo "Warte auf Let's Encrypt-Zertifikat und Traefik-Routing …"
+  TLS_OK=false
+  for _ in $(seq 1 24); do
+    if curl -sf --resolve "klick-and-zeugnis.de:443:127.0.0.1" https://klick-and-zeugnis.de/ >/dev/null; then
+      ISSUER="$(echo | openssl s_client -servername klick-and-zeugnis.de -connect 127.0.0.1:443 2>/dev/null | openssl x509 -noout -issuer 2>/dev/null || true)"
+      if echo "${ISSUER}" | grep -qi "Let's Encrypt"; then
+        TLS_OK=true
+        echo "TLS OK: ${ISSUER}"
+        break
+      fi
+      echo "HTTPS erreichbar, aber noch kein Let's-Encrypt-Zertifikat: ${ISSUER:-unbekannt}"
+    fi
+    sleep 10
+  done
+
+  if [[ "${TLS_OK}" != "true" ]]; then
+    echo "Fehler: Kein gültiges Let's-Encrypt-Zertifikat für klick-and-zeugnis.de."
+    docker logs klick-traefik --tail 120 || true
+    docker logs "${APP_CONTAINER}" --tail 80 || true
+    exit 1
+  fi
+fi
+
 echo "==> Deploy abgeschlossen: ${ENVIRONMENT} (${IMAGE_TAG})"
 docker compose ps

@@ -74,12 +74,7 @@ jobs:
 
       - name: Start Traefik
         run: |
-          if ! docker network inspect klick-proxy >/dev/null 2>&1; then
-            docker network create klick-proxy
-          fi
-          cd "${{ env.DEPLOY_ROOT }}/traefik"
-          docker compose -p klick-proxy-stack pull
-          docker compose -p klick-proxy-stack up -d --force-recreate
+          bash "${{ env.DEPLOY_ROOT }}/scripts/start-traefik.sh"
 
       - name: Deploy production stack
         env:

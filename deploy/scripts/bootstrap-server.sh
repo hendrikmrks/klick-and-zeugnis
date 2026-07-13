@@ -19,7 +19,7 @@ docker network inspect klick-proxy >/dev/null 2>&1 || docker network create klic
 
 if [[ ! -f "${DEPLOY_ROOT}/traefik/.env" ]]; then
   cat > "${DEPLOY_ROOT}/traefik/.env" <<'EOF'
-ACME_EMAIL=admin@klick-and-zeugnis.de
+ACME_EMAIL=kontakt@klick-and-zeugnis.de
 EOF
   echo "Erstellt: ${DEPLOY_ROOT}/traefik/.env"
 fi
