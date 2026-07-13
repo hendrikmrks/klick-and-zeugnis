@@ -39,6 +39,7 @@ if [[ "${ENVIRONMENT}" == "test" ]]; then
 else
   export RUN_DB_SEED=false
   export FORCE_SEED_RESET=false
+  export SEED_ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-mail@hendrik-beier.de}"
 fi
 docker compose --profile init run --rm db-init
 

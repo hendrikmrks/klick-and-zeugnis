@@ -36,6 +36,7 @@ services:
       PRISMA_CLIENT_ENGINE_TYPE: binary
       RUN_DB_SEED: ${RUN_DB_SEED:-true}
       FORCE_SEED_RESET: ${FORCE_SEED_RESET:-false}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-mail@hendrik-beier.de}
     command:
       - /bin/sh
       - -c
@@ -46,6 +47,7 @@ services:
         npx prisma generate --schema=prisma/.schema.resolved.prisma
         echo "Wende Datenbankschema an …"
         npx prisma db push --schema=prisma/.schema.resolved.prisma --skip-generate
+        SEED_ADMIN_EMAIL="$$SEED_ADMIN_EMAIL" node prisma/ensure-admin.runtime.cjs
         if [ "$$RUN_DB_SEED" = "true" ]; then
           echo "Spiele Seed-Daten ein (FORCE_SEED_RESET=$$FORCE_SEED_RESET) …"
           FORCE_SEED_RESET="$$FORCE_SEED_RESET" node prisma/seed.runtime.cjs

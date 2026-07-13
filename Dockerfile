@@ -18,7 +18,8 @@ COPY prisma ./prisma
 COPY scripts ./scripts
 RUN node scripts/sync-prisma-collections.mjs \
   && npx prisma generate --schema=prisma/.schema.resolved.prisma \
-  && npx esbuild prisma/seed.ts --bundle --platform=node --format=cjs --outfile=prisma/seed.runtime.cjs --packages=external
+  && npx esbuild prisma/seed.ts --bundle --platform=node --format=cjs --outfile=prisma/seed.runtime.cjs --packages=external \
+  && npx esbuild prisma/ensure-admin.ts --bundle --platform=node --format=cjs --outfile=prisma/ensure-admin.runtime.cjs --packages=external
 
 FROM deps AS builder
 ARG MONGODB_COLLECTION_PREFIX=local_

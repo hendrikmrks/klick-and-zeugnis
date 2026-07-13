@@ -39,6 +39,7 @@ services:
         node scripts/sync-prisma-collections.mjs
         npx prisma generate --schema=prisma/.schema.resolved.prisma
         npx prisma db push --schema=prisma/.schema.resolved.prisma --skip-generate
+        SEED_ADMIN_EMAIL="$$SEED_ADMIN_EMAIL" node prisma/ensure-admin.runtime.cjs
         if [ "$$RUN_DB_SEED" = "true" ]; then
           FORCE_SEED_RESET="$$FORCE_SEED_RESET" \
           SEED_ADMIN_EMAIL="$$SEED_ADMIN_EMAIL" \
