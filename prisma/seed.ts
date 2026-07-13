@@ -33,6 +33,10 @@ async function seedUser(
 async function main() {
   if (forceReset) {
     console.log("FORCE_SEED_RESET=true – lösche alle Anwendungsdaten …");
+    await prisma.blocklistEntry.deleteMany();
+    await prisma.contactMessage.deleteMany();
+    await prisma.supportTicket.deleteMany();
+    await prisma.faqItem.deleteMany();
     await prisma.certificateReport.deleteMany();
     await prisma.subscriptionRequest.deleteMany();
     await prisma.certificate.deleteMany();
@@ -43,10 +47,10 @@ async function main() {
     await prisma.user.deleteMany();
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "mail@hendrik-beier.de";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
 
-  if (adminEmail && adminPassword) {
+  if (adminPassword) {
     await seedUser(adminEmail, adminPassword, "Hendrik", "Beier", "Admin");
     console.log("");
     console.log(`Login admin: ${adminEmail}`);
@@ -55,10 +59,12 @@ async function main() {
 
   await seedUser("test@example.com", "secret123", "Test", "User");
   await seedUser("admin@example.com", "admin123", "Admin", "User", "Admin");
+  await seedUser("mail@hendrik-beier.de", "admin123", "Hendrik", "Beier", "Admin");
 
   console.log("");
   console.log("Login test: test@example.com / secret123");
   console.log("Login admin: admin@example.com / admin123");
+  console.log("Login admin: mail@hendrik-beier.de / admin123");
 }
 
 main()

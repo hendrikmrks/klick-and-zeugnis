@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    if (req.nextUrl.pathname.startsWith("/admin") && req.nextauth.token?.role !== "Admin") {
+    const token = req.nextauth.token;
+
+    if (token?.isBlocked && !req.nextUrl.pathname.startsWith("/hilfe")) {
+      return NextResponse.redirect(new URL("/hilfe?blocked=1", req.url));
+    }
+
+    if (req.nextUrl.pathname.startsWith("/admin") && token?.role !== "Admin") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   },

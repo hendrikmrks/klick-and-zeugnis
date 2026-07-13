@@ -14,16 +14,34 @@ import { SUBSCRIPTION_LEVELS } from "@/lib/subscription";
 import {
   ClipboardList,
   FileWarning,
+  HelpCircle,
+  LifeBuoy,
   Shield,
   Users,
 } from "lucide-react";
 import OpenAiUsageSection, {
   type OpenAiUsageData,
 } from "@/components/admin/OpenAiUsageSection";
+import AdminFaqTab, { type FaqItem } from "@/components/admin/AdminFaqTab";
+import AdminSupportTab, {
+  type ContactMessage,
+  type SupportTicket,
+} from "@/components/admin/AdminSupportTab";
 
-type Tab = "overview" | "subscriptions" | "users" | "reports";
+type Tab =
+  | "overview"
+  | "subscriptions"
+  | "users"
+  | "reports"
+  | "support"
+  | "faq";
 
-type Stats = { pendingRequests: number; pendingReports: number; users: number };
+type Stats = {
+  pendingRequests: number;
+  pendingReports: number;
+  pendingTickets: number;
+  users: number;
+};
 
 type SubRequest = {
   id: string;
@@ -54,6 +72,9 @@ type AdminUser = {
   lastName: string | null;
   subscriptionLevel: string;
   role: string;
+  isBlocked: boolean;
+  registrationIp: string | null;
+  blockedReason: string | null;
   createdAt: string;
   _count: { certificates: number };
 };
@@ -74,11 +95,29 @@ type CertReport = {
   };
 };
 
-const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "overview", label: "Übersicht", icon: Shield },
-  { id: "subscriptions", label: "Abo-Anfragen", icon: ClipboardList },
-  { id: "users", label: "Nutzer", icon: Users },
-  { id: "reports", label: "Zeugnis-Meldungen", icon: FileWarning },
+const tabGroups: {
+  label: string;
+  tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[];
+}[] = [
+  {
+    label: "Allgemein",
+    tabs: [{ id: "overview", label: "Übersicht", icon: Shield }],
+  },
+  {
+    label: "Nutzer & Abos",
+    tabs: [
+      { id: "subscriptions", label: "Abo-Anfragen", icon: ClipboardList },
+      { id: "users", label: "Nutzer", icon: Users },
+    ],
+  },
+  {
+    label: "Inhalte & Support",
+    tabs: [
+      { id: "reports", label: "Zeugnis-Meldungen", icon: FileWarning },
+      { id: "support", label: "Support", icon: LifeBuoy },
+      { id: "faq", label: "FAQ", icon: HelpCircle },
+    ],
+  },
 ];
 
 function statusBadge(status: string) {
@@ -90,7 +129,13 @@ function statusBadge(status: string) {
   };
   return (
     <Badge className={cn("hover:bg-inherit", map[status] ?? "bg-slate-100 text-slate-700")}>
-      {status === "Pending" ? "Offen" : status === "Approved" ? "Genehmigt" : status === "Rejected" ? "Abgelehnt" : "Bearbeitet"}
+      {status === "Pending"
+        ? "Offen"
+        : status === "Approved"
+          ? "Genehmigt"
+          : status === "Rejected"
+            ? "Abgelehnt"
+            : "Bearbeitet"}
     </Badge>
   );
 }
@@ -103,10 +148,14 @@ export default function AdminPage() {
   const [requests, setRequests] = useState<SubRequest[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [reports, setReports] = useState<CertReport[]>([]);
+  const [faqItems, setFaqItems] = useState<FaqItem[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [feedbackDraft, setFeedbackDraft] = useState<Record<string, string>>({});
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const [blockReasonDraft, setBlockReasonDraft] = useState<Record<string, string>>({});
   const [openAiUsage, setOpenAiUsage] = useState<OpenAiUsageData | null>(null);
   const [openAiUsageError, setOpenAiUsageError] = useState<string | null>(null);
 
@@ -114,13 +163,17 @@ export default function AdminPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [statsRes, reqRes, usersRes, repRes, usageRes] = await Promise.all([
-        fetch("/api/admin/stats"),
-        fetch("/api/admin/subscription-requests"),
-        fetch("/api/admin/users"),
-        fetch("/api/admin/certificate-reports"),
-        fetch("/api/admin/openai-usage"),
-      ]);
+      const [statsRes, reqRes, usersRes, repRes, usageRes, faqRes, ticketsRes, contactRes] =
+        await Promise.all([
+          fetch("/api/admin/stats"),
+          fetch("/api/admin/subscription-requests"),
+          fetch("/api/admin/users"),
+          fetch("/api/admin/certificate-reports"),
+          fetch("/api/admin/openai-usage"),
+          fetch("/api/admin/faq"),
+          fetch("/api/admin/support-tickets"),
+          fetch("/api/admin/contact-messages"),
+        ]);
       if (!statsRes.ok || !reqRes.ok || !usersRes.ok || !repRes.ok) {
         throw new Error("Admin-Daten konnten nicht geladen werden.");
       }
@@ -128,6 +181,10 @@ export default function AdminPage() {
       setRequests((await reqRes.json()).requests);
       setUsers((await usersRes.json()).users);
       setReports((await repRes.json()).reports);
+
+      if (faqRes.ok) setFaqItems((await faqRes.json()).items);
+      if (ticketsRes.ok) setTickets((await ticketsRes.json()).tickets);
+      if (contactRes.ok) setContactMessages((await contactRes.json()).messages);
 
       if (usageRes.ok) {
         setOpenAiUsage(await usageRes.json());
@@ -177,6 +234,18 @@ export default function AdminPage() {
     load();
   };
 
+  const handleUserBlock = async (userId: string, action: "block" | "unblock") => {
+    await fetch(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        reason: blockReasonDraft[userId] ?? "",
+      }),
+    });
+    load();
+  };
+
   const handleReportFeedback = async (id: string) => {
     const adminFeedback = feedbackDraft[id];
     if (!adminFeedback?.trim()) return;
@@ -193,33 +262,42 @@ export default function AdminPage() {
     <PageContainer>
       <PageHeader
         title="Admin-Bereich"
-        description="Abonnements verwalten, Nutzer betreuen und gemeldete Zeugnistexte prüfen."
+        description="Abonnements, Nutzer, Support und Inhalte verwalten."
       />
 
       {loadError && <Alert variant="error">{loadError}</Alert>}
 
-      <div
-        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1"
-        role="tablist"
-        aria-label="Admin-Bereiche"
-      >
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <Button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            size="sm"
-            variant={tab === id ? "default" : "ghost"}
-            className={cn(
-              "rounded-lg",
-              tab !== id && "text-slate-600 hover:bg-white/80 hover:text-slate-900"
-            )}
-            onClick={() => setTab(id)}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </Button>
+      <div className="mb-6 space-y-3">
+        {tabGroups.map((group) => (
+          <div key={group.label}>
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+              {group.label}
+            </p>
+            <div
+              className="inline-flex max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1"
+              role="tablist"
+              aria-label={group.label}
+            >
+              {group.tabs.map(({ id, label, icon: Icon }) => (
+                <Button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  size="sm"
+                  variant={tab === id ? "default" : "ghost"}
+                  className={cn(
+                    "rounded-lg",
+                    tab !== id && "text-slate-600 hover:bg-white/80 hover:text-slate-900"
+                  )}
+                  onClick={() => setTab(id)}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -227,7 +305,7 @@ export default function AdminPage() {
         <LoadingState />
       ) : tab === "overview" ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">Offene Abo-Anfragen</p>
               <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingRequests ?? 0}</p>
@@ -237,15 +315,16 @@ export default function AdminPage() {
               <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingReports ?? 0}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm text-slate-500">Offene Support-Tickets</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.pendingTickets ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">Registrierte Nutzer</p>
               <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.users ?? 0}</p>
             </div>
           </div>
 
-          <OpenAiUsageSection
-            data={openAiUsage}
-            error={openAiUsageError}
-          />
+          <OpenAiUsageSection data={openAiUsage} error={openAiUsageError} />
         </>
       ) : tab === "subscriptions" ? (
         <div className="space-y-4">
@@ -265,13 +344,13 @@ export default function AdminPage() {
                       {" → "}
                       <span className="font-medium text-blue-700">{req.requestedLevel}</span>
                     </p>
-                {req.billingEmail && (
-                  <p className="mt-2 text-sm text-slate-600">
-                    Rechnung an: {req.billingName}, {req.billingStreet},{" "}
-                    {req.billingZip} {req.billingCity}, {req.billingCountry ?? "Deutschland"}{" "}
-                    ({req.billingEmail})
-                  </p>
-                )}
+                    {req.billingEmail && (
+                      <p className="mt-2 text-sm text-slate-600">
+                        Rechnung an: {req.billingName}, {req.billingStreet},{" "}
+                        {req.billingZip} {req.billingCity}, {req.billingCountry ?? "Deutschland"}{" "}
+                        ({req.billingEmail})
+                      </p>
+                    )}
                     {req.message && (
                       <p className="mt-2 text-sm text-slate-600">Nachricht: {req.message}</p>
                     )}
@@ -321,16 +400,29 @@ export default function AdminPage() {
                 <th className="p-3">Tarif</th>
                 <th className="p-3">Zeugnisse</th>
                 <th className="p-3">Tarif ändern</th>
+                <th className="p-3">Sperre</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id} className="border-b border-slate-100">
                   <td className="p-3">
-                    <p className="font-medium">{u.firstName} {u.lastName}</p>
+                    <p className="font-medium">
+                      {u.firstName} {u.lastName}
+                    </p>
                     <p className="text-slate-500">{u.email}</p>
+                    {u.registrationIp && (
+                      <p className="text-xs text-slate-400">IP: {u.registrationIp}</p>
+                    )}
                     {u.role === "Admin" && (
-                      <Badge className="mt-1 bg-violet-100 text-violet-700 hover:bg-violet-100">Admin</Badge>
+                      <Badge className="mt-1 bg-violet-100 text-violet-700 hover:bg-violet-100">
+                        Admin
+                      </Badge>
+                    )}
+                    {u.isBlocked && (
+                      <Badge className="mt-1 bg-red-100 text-red-700 hover:bg-red-100">
+                        Gesperrt
+                      </Badge>
                     )}
                   </td>
                   <td className="p-3">{u.subscriptionLevel}</td>
@@ -340,18 +432,53 @@ export default function AdminPage() {
                       className="rounded-lg border border-slate-200 px-2 py-1"
                       value={u.subscriptionLevel}
                       onChange={(e) => handleUserLevel(u.id, e.target.value)}
+                      disabled={u.isBlocked}
                     >
                       {SUBSCRIPTION_LEVELS.map((level) => (
-                        <option key={level} value={level}>{level}</option>
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="p-3">
+                    {u.role === "Admin" ? (
+                      <span className="text-slate-400">—</span>
+                    ) : u.isBlocked ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleUserBlock(u.id, "unblock")}
+                      >
+                        Entsperren
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          className="w-full min-w-[10rem] rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                          placeholder="Grund (optional)"
+                          value={blockReasonDraft[u.id] ?? ""}
+                          onChange={(e) =>
+                            setBlockReasonDraft((d) => ({ ...d, [u.id]: e.target.value }))
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600"
+                          onClick={() => handleUserBlock(u.id, "block")}
+                        >
+                          Sperren
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : tab === "reports" ? (
         <div className="space-y-4">
           {reports.length === 0 ? (
             <p className="text-slate-500">Keine Meldungen vorhanden.</p>
@@ -367,7 +494,9 @@ export default function AdminPage() {
                       <p className="text-sm text-slate-500">Schüler/in: {rep.studentName}</p>
                     )}
                     {rep.reason && (
-                      <p className="mt-2 text-sm"><span className="font-medium">Grund:</span> {rep.reason}</p>
+                      <p className="mt-2 text-sm">
+                        <span className="font-medium">Grund:</span> {rep.reason}
+                      </p>
                     )}
                   </div>
                   {statusBadge(rep.status)}
@@ -398,6 +527,10 @@ export default function AdminPage() {
             ))
           )}
         </div>
+      ) : tab === "support" ? (
+        <AdminSupportTab tickets={tickets} messages={contactMessages} onReload={load} />
+      ) : (
+        <AdminFaqTab items={faqItems} onReload={load} />
       )}
     </PageContainer>
   );

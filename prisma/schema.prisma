@@ -31,6 +31,12 @@ enum ReportStatus {
   Reviewed
 }
 
+enum TicketStatus {
+  Open
+  InProgress
+  Closed
+}
+
 model User {
   id                    String            @id @default(auto()) @map("_id") @db.ObjectId
   firstName             String?
@@ -46,6 +52,10 @@ model User {
   totpEnabled           Boolean           @default(false)
   privacyAdvancedModeEnabled Boolean      @default(false)
   role                  UserRole          @default(User)
+  registrationIp        String?
+  isBlocked             Boolean           @default(false)
+  blockedAt             DateTime?
+  blockedReason         String?
   accounts              Account[]
   sessions              Session[]
   Authenticators        Authenticator[]
@@ -53,8 +63,11 @@ model User {
   generatedCertificates GeneratedCertificate[]
   subscriptionRequests  SubscriptionRequest[]
   certificateReports    CertificateReport[]
+  supportTickets        SupportTicket[]
+  contactMessages       ContactMessage[]
   reviewedSubscriptionRequests SubscriptionRequest[] @relation("SubscriptionReviewedBy")
   reviewedCertificateReports   CertificateReport[]   @relation("ReportReviewedBy")
+  reviewedSupportTickets       SupportTicket[]       @relation("TicketReviewedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,4 +216,60 @@ model CertificateReport {
   updatedAt     DateTime     @updatedAt
 
   @@map("__PREFIX__CertificateReport")
+}
+
+model FaqItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("__PREFIX__FaqItem")
+}
+
+model SupportTicket {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String?      @db.ObjectId
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName    String?
+  guestEmail   String?
+  subject      String
+  message      String
+  status       TicketStatus @default(Open)
+  adminReply   String?
+  reviewedById String?      @db.ObjectId
+  reviewedBy   User?        @relation("TicketReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("__PREFIX__SupportTicket")
+}
+
+model ContactMessage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?  @db.ObjectId
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName  String?
+  guestEmail String?
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@map("__PREFIX__ContactMessage")
+}
+
+model BlocklistEntry {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String?
+  ip        String?
+  reason    String?
+  userId    String?  @db.ObjectId
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([ip])
+  @@map("__PREFIX__BlocklistEntry")
 }

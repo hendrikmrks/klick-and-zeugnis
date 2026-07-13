@@ -35,6 +35,10 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
+        if (user.isBlocked) {
+          throw new Error("ACCOUNT_BLOCKED");
+        }
+
         if (user.totpEnabled && user.totpSecret) {
           if (!credentials.totpCode) {
             throw new Error("2FA_REQUIRED");
@@ -49,6 +53,7 @@ export const authOptions: AuthOptions = {
           name: user.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : null,
           email: user.email,
           role: user.role,
+          isBlocked: user.isBlocked,
         };
       },
     }),
@@ -58,6 +63,16 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.sub = user.id;
         token.role = (user as { role?: string }).role ?? "User";
+        token.isBlocked = (user as { isBlocked?: boolean }).isBlocked ?? false;
+      } else if (token.sub) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true, isBlocked: true },
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.isBlocked = dbUser.isBlocked;
+        }
       }
       return token;
     },

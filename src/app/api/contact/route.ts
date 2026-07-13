@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+import { getOptionalUser } from "@/lib/api-auth";
+import { notifyContactAcknowledgement } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const { message, guestName, guestEmail } = body;
+
+  if (!message || typeof message !== "string" || !message.trim()) {
+    return NextResponse.json({ error: "Bitte geben Sie eine Nachricht ein." }, { status: 400 });
+  }
+
+  const user = await getOptionalUser();
+
+  if (!user) {
+    if (!guestName?.trim() || !guestEmail?.trim()) {
+      return NextResponse.json(
+        { error: "Bitte geben Sie Name und E-Mail-Adresse an." },
+        { status: 400 }
+      );
+    }
+    if (!emailPattern.test(guestEmail.trim())) {
+      return NextResponse.json({ error: "Bitte geben Sie eine gültige E-Mail-Adresse ein." }, { status: 400 });
+    }
+  }
+
+  const contact = await prisma.contactMessage.create({
+    data: {
+      userId: user?.id ?? null,
+      guestName: user ? null : guestName.trim(),
+      guestEmail: user ? null : guestEmail.trim().toLowerCase(),
+      message: message.trim(),
+    },
+  });
+
+  const notifyEmail = user?.email ?? guestEmail?.trim().toLowerCase();
+  if (notifyEmail) {
+    await notifyContactAcknowledgement(notifyEmail, message.trim());
+  }
+
+  return NextResponse.json({ id: contact.id, message: "Nachricht wurde gesendet." });
+}

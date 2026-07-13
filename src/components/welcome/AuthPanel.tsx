@@ -58,6 +58,12 @@ export default function AuthPanel({ mode, onModeChange }: Props) {
         setLoginStep("2fa");
         return;
       }
+      if (res?.error === "ACCOUNT_BLOCKED") {
+        setError(
+          "Ihr Konto wurde gesperrt. Bitte wenden Sie sich über die Hilfe-Seite an den Support."
+        );
+        return;
+      }
       setError(
         loginStep === "2fa" ? "Ungültiger Bestätigungscode." : "E-Mail oder Passwort ungültig."
       );
@@ -86,6 +92,13 @@ export default function AuthPanel({ mode, onModeChange }: Props) {
 
     if (!prelogin.ok) {
       setLoading(false);
+      const data = await prelogin.json().catch(() => ({}));
+      if (data.code === "ACCOUNT_BLOCKED") {
+        setError(
+          "Ihr Konto wurde gesperrt. Bitte wenden Sie sich über die Hilfe-Seite an den Support."
+        );
+        return;
+      }
       setError("E-Mail oder Passwort ungültig.");
       return;
     }

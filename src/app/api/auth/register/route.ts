@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { isRegistrationBlocked } from "@/lib/blocklist";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function POST(req: Request) {
     try {
@@ -29,9 +31,21 @@ export async function POST(req: Request) {
             );
         }
 
-        // Existiert E-Mail schon?
+        const normalizedEmail = email.trim().toLowerCase();
+        const clientIp = getClientIp(req);
+
+        if (await isRegistrationBlocked(normalizedEmail, clientIp)) {
+            return NextResponse.json(
+                {
+                    error: "Eine Registrierung ist mit diesen Daten nicht möglich. Bei Fragen wenden Sie sich bitte an den Support.",
+                    code: "REGISTRATION_BLOCKED",
+                },
+                { status: 403 }
+            );
+        }
+
         const existingUser = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
         if (existingUser) {
@@ -41,17 +55,16 @@ export async function POST(req: Request) {
             );
         }
 
-        // Passwort hashen
         const hashedPassword = await hash(password, 12);
 
-        // User speichern
         await prisma.user.create({
             data: {
-                email,
+                email: normalizedEmail,
                 firstName,
                 lastName,
                 birthDate: new Date(birthDate),
                 passwordHash: hashedPassword,
+                registrationIp: clientIp,
             },
         });
 

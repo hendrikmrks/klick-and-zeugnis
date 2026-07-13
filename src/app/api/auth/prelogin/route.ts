@@ -16,6 +16,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ungültige Anmeldedaten." }, { status: 401 });
   }
 
+  if (user.isBlocked) {
+    return NextResponse.json(
+      {
+        error: "Ihr Konto wurde gesperrt. Bitte wenden Sie sich über die Hilfe-Seite an den Support.",
+        code: "ACCOUNT_BLOCKED",
+      },
+      { status: 403 }
+    );
+  }
+
   const valid = await compare(password, user.passwordHash);
   if (!valid) {
     return NextResponse.json({ error: "Ungültige Anmeldedaten." }, { status: 401 });

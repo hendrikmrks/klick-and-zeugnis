@@ -214,6 +214,9 @@ export default function WelcomePage() {
           <Link href="/widerruf" className="hover:text-slate-300">
             Widerruf
           </Link>
+          <Link href="/hilfe" className="hover:text-slate-300">
+            Kontakt & Hilfe
+          </Link>
         </nav>
       </footer>
     </div>

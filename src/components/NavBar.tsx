@@ -13,6 +13,7 @@ const baseNavLinks = [
   { href: "/reports", label: "Zeugnisse" },
   { href: "/analytics", label: "Analysen" },
   { href: "/subscription", label: "Abo" },
+  { href: "/hilfe", label: "Hilfe" },
 ];
 
 export default function NavBar() {
