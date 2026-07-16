@@ -60,6 +60,24 @@ export function getStyleUserInstruction(style: CertificateStyle): string {
   return instructions[style];
 }
 
+export function buildCertificateUserPrompt(
+  name: string,
+  gender: string,
+  grade: string,
+  socialSkills: string[],
+  roles: string[],
+  style: CertificateStyle
+): string {
+  return `
+      Name: ${name}
+      Geschlecht: ${gender}
+      Klasse: ${grade}
+      Sozialverhalten: ${JSON.stringify(socialSkills)}
+      Rollen: ${JSON.stringify(roles)}
+      ${getStyleUserInstruction(style)}
+    `;
+}
+
 export function applyMockStyleVariant(text: string, style: CertificateStyle): string {
   if (style === "default") return text;
 

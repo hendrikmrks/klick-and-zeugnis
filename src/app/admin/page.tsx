@@ -23,6 +23,8 @@ import OpenAiUsageSection, {
   type OpenAiUsageData,
 } from "@/components/admin/OpenAiUsageSection";
 import AdminFaqTab, { type FaqItem } from "@/components/admin/AdminFaqTab";
+import AdminReportCard from "@/components/admin/AdminReportCard";
+import type { CertificateReportDetails } from "@/lib/certificate-report-details";
 import AdminSupportTab, {
   type ContactMessage,
   type SupportTicket,
@@ -93,6 +95,7 @@ type CertReport = {
     firstName: string | null;
     lastName: string | null;
   };
+  details?: CertificateReportDetails;
 };
 
 const tabGroups: {
@@ -484,46 +487,15 @@ export default function AdminPage() {
             <p className="text-slate-500">Keine Meldungen vorhanden.</p>
           ) : (
             reports.map((rep) => (
-              <div key={rep.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {rep.user.firstName} {rep.user.lastName} ({rep.user.email})
-                    </p>
-                    {rep.studentName && (
-                      <p className="text-sm text-slate-500">Schüler/in: {rep.studentName}</p>
-                    )}
-                    {rep.reason && (
-                      <p className="mt-2 text-sm">
-                        <span className="font-medium">Grund:</span> {rep.reason}
-                      </p>
-                    )}
-                  </div>
-                  {statusBadge(rep.status)}
-                </div>
-                <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
-                  {rep.text}
-                </p>
-                {rep.status === "Pending" ? (
-                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                    <textarea
-                      placeholder="Feedback an den Nutzer …"
-                      className="w-full rounded-lg border border-slate-200 p-2 text-sm"
-                      value={feedbackDraft[rep.id] ?? ""}
-                      onChange={(e) => setFeedbackDraft((d) => ({ ...d, [rep.id]: e.target.value }))}
-                    />
-                    <Button size="sm" onClick={() => handleReportFeedback(rep.id)}>
-                      Feedback senden
-                    </Button>
-                  </div>
-                ) : (
-                  rep.adminFeedback && (
-                    <p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
-                      <span className="font-medium">Feedback an Nutzer:</span> {rep.adminFeedback}
-                    </p>
-                  )
-                )}
-              </div>
+              <AdminReportCard
+                key={rep.id}
+                report={rep}
+                feedbackDraft={feedbackDraft[rep.id] ?? ""}
+                onFeedbackChange={(value) =>
+                  setFeedbackDraft((d) => ({ ...d, [rep.id]: value }))
+                }
+                onFeedbackSubmit={() => handleReportFeedback(rep.id)}
+              />
             ))
           )}
         </div>

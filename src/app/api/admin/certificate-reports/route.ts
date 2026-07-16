@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { getCertificateReportDetails } from "@/lib/certificate-report-details";
 
 export async function GET(req: Request) {
   const result = await requireAdmin();
@@ -25,5 +26,12 @@ export async function GET(req: Request) {
     },
   });
 
-  return NextResponse.json({ reports });
+  const reportsWithDetails = await Promise.all(
+    reports.map(async (report) => ({
+      ...report,
+      details: await getCertificateReportDetails(report),
+    }))
+  );
+
+  return NextResponse.json({ reports: reportsWithDetails });
 }

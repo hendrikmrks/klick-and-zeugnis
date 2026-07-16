@@ -10,6 +10,7 @@ type Props = {
   text: string;
   studentName?: string;
   certificateId?: string;
+  generatedCertificateId?: string;
   onSuccess?: () => void;
   compact?: boolean;
 };
@@ -18,6 +19,7 @@ export default function ReportCertificateButton({
   text,
   studentName,
   certificateId,
+  generatedCertificateId,
   onSuccess,
   compact = false,
 }: Props) {
@@ -34,7 +36,7 @@ export default function ReportCertificateButton({
     const res = await fetch("/api/certificate/report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, reason, certificateId, studentName }),
+      body: JSON.stringify({ text, reason, certificateId, studentName, generatedCertificateId }),
     });
     const data = await res.json();
     setLoading(false);

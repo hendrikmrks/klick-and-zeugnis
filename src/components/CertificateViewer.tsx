@@ -17,6 +17,7 @@ type Props = {
   style?: CertificateStyle;
   onStyleChange?: (style: CertificateStyle) => void;
   studentName?: string;
+  generatedCertificateId?: string;
   canUseClasses?: boolean;
   className?: string;
   onClassNameChange?: (value: string) => void;
@@ -34,6 +35,7 @@ export default function CertificateViewer({
   style = "default",
   onStyleChange,
   studentName,
+  generatedCertificateId,
   canUseClasses,
   className = "",
   onClassNameChange,
@@ -112,7 +114,11 @@ export default function CertificateViewer({
           </Button>
         </div>
         {!isEmpty && (
-          <ReportCertificateButton text={content} studentName={studentName} />
+          <ReportCertificateButton
+            text={content}
+            studentName={studentName}
+            generatedCertificateId={generatedCertificateId}
+          />
         )}
       </div>
     </div>

@@ -10,11 +10,12 @@ import {
 } from "@/lib/openai-usage";
 import {
   applyMockStyleVariant,
+  buildCertificateUserPrompt,
   getStyleSystemPrompt,
-  getStyleUserInstruction,
   parseCertificateStyle,
   type CertificateStyle,
 } from "@/lib/certificate-style";
+import { getClientIp } from "@/lib/request-ip";
 import {
   countWords,
   GENERATE_INPUT_LIMITS,
@@ -55,14 +56,7 @@ async function generateCertificateText(
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const prompt = `
-      Name: ${name}
-      Geschlecht: ${gender}
-      Klasse: ${grade}
-      Sozialverhalten: ${JSON.stringify(socialSkills)}
-      Rollen: ${JSON.stringify(roles)}
-      ${getStyleUserInstruction(style)}
-    `;
+  const prompt = buildCertificateUserPrompt(name, gender, grade, socialSkills, roles, style);
 
   const completion = await openai.chat.completions.create({
     model: OPENAI_MODEL,
@@ -136,6 +130,9 @@ export async function POST(req: Request) {
     }
 
     const { name, gender, grade, socialSkills, roles, style } = parsed.data;
+    const systemPrompt = getStyleSystemPrompt(style);
+    const userPrompt = buildCertificateUserPrompt(name, gender, grade, socialSkills, roles, style);
+    const clientIp = getClientIp(req);
 
     const dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -165,6 +162,15 @@ export async function POST(req: Request) {
           userId: dbUser.id,
           text: "",
           wordCount: 0,
+          inputName: name,
+          inputGender: gender,
+          inputGrade: grade,
+          inputSocialSkills: socialSkills,
+          inputRoles: roles,
+          inputStyle: style,
+          systemPrompt,
+          userPrompt,
+          clientIp,
         },
       });
     });

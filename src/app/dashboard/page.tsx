@@ -237,6 +237,7 @@ export default function DashboardPage() {
             onStyleChange={setStyle}
             canSave={Boolean(certificate && generatedId)}
             studentName={name}
+            generatedCertificateId={generatedId ?? undefined}
             canUseClasses={canUseClasses}
             className={className}
             onClassNameChange={setClassName}

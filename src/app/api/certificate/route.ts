@@ -226,6 +226,7 @@ export async function POST(req: Request) {
     const cert = await tx.certificate.create({
       data: {
         userId: dbUser.id,
+        generatedCertificateId: generatedId,
         name: storedName,
         gender: gender.trim().slice(0, limits.genderMaxLength),
         text: storedText,

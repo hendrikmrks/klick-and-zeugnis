@@ -138,9 +138,10 @@ model Authenticator {
 }
 
 model Certificate {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String   @db.ObjectId
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String   @db.ObjectId
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedCertificateId String?  @db.ObjectId
 
   name          String   // NEU: Name speichern
   gender        String   // NEU: Geschlecht speichern
@@ -160,18 +161,27 @@ model Certificate {
 }
 
 model GeneratedCertificate {
-  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId               String    @db.ObjectId
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  text                 String
-  wordCount            Int
-  openAiModel          String?
-  openAiPromptTokens   Int?
+  id                     String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String    @db.ObjectId
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text                   String
+  wordCount              Int
+  inputName              String?
+  inputGender            String?
+  inputGrade             String?
+  inputSocialSkills      String[]
+  inputRoles             String[]
+  inputStyle             String?
+  systemPrompt           String?
+  userPrompt             String?
+  clientIp               String?
+  openAiModel            String?
+  openAiPromptTokens     Int?
   openAiCompletionTokens Int?
-  openAiTotalTokens    Int?
-  openAiCostUsd        Float?
-  consumedAt           DateTime?
-  createdAt            DateTime  @default(now())
+  openAiTotalTokens      Int?
+  openAiCostUsd          Float?
+  consumedAt             DateTime?
+  createdAt              DateTime  @default(now())
 
   @@map("__PREFIX__GeneratedCertificate")
 }
@@ -200,20 +210,21 @@ model SubscriptionRequest {
 }
 
 model CertificateReport {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String       @db.ObjectId
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  certificateId String?      @db.ObjectId
-  studentName   String?
-  text          String
-  reason        String?
-  status        ReportStatus @default(Pending)
-  adminFeedback String?
-  reviewedById  String?      @db.ObjectId
-  reviewedBy    User?        @relation("ReportReviewedBy", fields: [reviewedById], references: [id])
-  reviewedAt    DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                     String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String       @db.ObjectId
+  user                   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificateId          String?      @db.ObjectId
+  generatedCertificateId String?      @db.ObjectId
+  studentName            String?
+  text                   String
+  reason                 String?
+  status                 ReportStatus @default(Pending)
+  adminFeedback          String?
+  reviewedById           String?      @db.ObjectId
+  reviewedBy             User?        @relation("ReportReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt             DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   @@map("__PREFIX__CertificateReport")
 }
